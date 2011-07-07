@@ -3,10 +3,12 @@ This page is in the table of contents.
 Skeiniso is an analysis script to display a gcode file in an isometric view.
 
 The skeiniso manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Skeiniso
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Skeiniso
 
 ==Operation==
-The default 'Activate Skeiniso' checkbox is on.  When it is on, the functions described below will work when called from the skeinforge toolchain, when it is off, the functions will not be called from the toolchain.  The functions will still be called, whether or not the 'Activate Skeiniso' checkbox is on, when skeiniso is run directly.  Skeiniso can not separate the layers when it reads gcode without comments.
+The default 'Activate Skeiniso' checkbox is on.  When it is on, the functions described below will work when called from the skeinforge toolchain, when it is off, the functions will not be called from the toolchain.  The functions will still be called, whether or not the 'Activate Skeiniso' checkbox is on, when skeiniso is run directly.
+
+Skeiniso requires skeinforge comments in the gcode file to distinguish the loops and perimeters.  If the comments are deleted, all threads will be displayed as generic threads.  To get the penultimate file of the tool chain, just before export deletes the comments, select 'Save Penultimate Gcode' in export, and open the gcode file with the suffix '_penultimate.gcode' with skeiniso.
 
 The viewer is simple, the viewpoint can only be moved in a sphere around the center of the model by changing the viewpoint latitude and longitude.  Different regions of the model can be hidden by setting the width of the thread to zero.  The alternating bands act as contour bands and their brightness and width can be changed.
 
@@ -212,25 +214,10 @@ http://forums.reprap.org/file.php?12,file=565
 ==Examples==
 Below are examples of skeiniso being used.  These examples are run in a terminal in the folder which contains Screw Holder_penultimate.gcode and skeiniso.py.
 
-
 > python skeiniso.py
 This brings up the skeiniso dialog.
 
-
 > python skeiniso.py Screw Holder_penultimate.gcode
-This brings up the skeiniso viewer to view the gcode file.
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import skeiniso
->>> skeiniso.main()
-This brings up the skeiniso dialog.
-
-
->>> skeiniso.getWindowAnalyzeFile('Screw Holder_penultimate.gcode')
 This brings up the skeiniso viewer to view the gcode file.
 
 """
@@ -249,13 +236,14 @@ from skeinforge_application.skeinforge_plugins.analyze_plugins.analyze_utilities
 from skeinforge_application.skeinforge_plugins.analyze_plugins.analyze_utilities import view_move
 from skeinforge_application.skeinforge_plugins.analyze_plugins.analyze_utilities import view_rotate
 from skeinforge_application.skeinforge_utilities import skeinforge_polyfile
+from skeinforge_application.skeinforge_utilities import skeinforge_profile
 import math
 import sys
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def compareLayerSequence( first, second ):
@@ -269,7 +257,7 @@ def compareLayerSequence( first, second ):
 	return int( first.sequenceIndex > second.sequenceIndex )
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return SkeinisoRepository()
 
 def getWindowAnalyzeFile(fileName):
@@ -298,17 +286,17 @@ def writeOutput( fileName, fileNameSuffix, gcodeText = ''):
 	repository = settings.getReadRepository( SkeinisoRepository() )
 	if repository.activateSkeiniso.value:
 		gcodeText = archive.getTextIfEmpty( fileNameSuffix, gcodeText )
-		getWindowAnalyzeFileGivenText( fileNameSuffix, gcodeText, repository )
+		return getWindowAnalyzeFileGivenText( fileNameSuffix, gcodeText, repository )
 
 
 class SkeinisoRepository( tableau.TableauRepository ):
 	"A class to handle the skeiniso settings."
 	def __init__(self):
 		"Set the default settings, execute title & settings fileName."
-		settings.addListsToRepository('skeinforge_application.skeinforge_plugins.analyze_plugins.skeiniso.html', None, self )
+		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.analyze_plugins.skeiniso.html', self)
 		self.baseNameSynonym = 'behold.csv'
 		self.fileNameInput = settings.FileNameInput().getFromFileName( [ ('Gcode text files', '*.gcode') ], 'Open File for Skeiniso', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Skeiniso')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Skeiniso')
 		self.activateSkeiniso = settings.BooleanSetting().getFromValue('Activate Skeiniso', self, True )
 		self.addAnimation()
 		self.axisRulings = settings.BooleanSetting().getFromValue('Axis Rulings', self, True )
@@ -377,8 +365,9 @@ class SkeinisoSkein:
 		self.isThereALayerStartWord = False
 		self.layerCount = settings.LayerCount()
 		self.layerTops = []
+		self.lineIndex = 0
 		self.oldLayerZoneIndex = 0
-		self.oldZ = - 999999999999.0
+		self.oldZ = - 999987654321.0
 		self.skeinPane = None
 		self.skeinPanes = []
 		self.thirdLayerThickness = 0.133333
@@ -422,24 +411,12 @@ class SkeinisoSkein:
 		self.extruderActive = False
 		self.oldLocation = None
 
-	def isLayerStart( self, firstWord, splitLine ):
-		"Parse a gcode line and add it to the vector output."
-		if self.isThereALayerStartWord:
-			return firstWord == '(<layer>'
-		if firstWord != 'G1' and firstWord != 'G2' and firstWord != 'G3':
-			return False
-		location = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine)
-		if location.z - self.oldZ > 0.1:
-			self.oldZ = location.z
-			return True
-		return False
-
 	def linearCorner( self, splitLine ):
 		"Update the bounding corners."
 		location = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine)
 		if self.extruderActive or self.goAroundExtruderOffTravel:
-			self.cornerHigh = euclidean.getPointMaximum( self.cornerHigh, location )
-			self.cornerLow = euclidean.getPointMinimum( self.cornerLow, location )
+			self.cornerMaximum.maximize(location)
+			self.cornerMinimum.minimize(location)
 		self.oldLocation = location
 
 	def linearMove( self, line, location ):
@@ -483,17 +460,21 @@ class SkeinisoSkein:
 		if len(splitLine) < 1:
 			return
 		firstWord = splitLine[0]
+		if tableau.getIsLayerStart(firstWord, self, splitLine):
+			if firstWord == '(<layer>':
+				self.layerTopZ = float(splitLine[1]) + self.thirdLayerThickness
+			else:
+				self.layerTopZ = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine).z + self.thirdLayerThickness
+				self.layerTops.append( self.layerTopZ )
 		if firstWord == 'G1':
 			self.linearCorner(splitLine)
 		elif firstWord == 'M101':
 			self.extruderActive = True
 		elif firstWord == 'M103':
 			self.extruderActive = False
-		elif firstWord == '(<layer>':
-			self.layerTopZ = float(splitLine[1]) + self.thirdLayerThickness
 		elif firstWord == '(<layerThickness>':
 			self.thirdLayerThickness = 0.33333333333 * float(splitLine[1])
-		elif firstWord == '(<surroundingLoop>)':
+		if firstWord == '(<nestedRing>)':
 			if self.layerTopZ > self.getLayerTop():
 				self.layerTops.append( self.layerTopZ )
 
@@ -503,28 +484,42 @@ class SkeinisoSkein:
 		self.fileName = fileName
 		self.gcodeText = gcodeText
 		self.initializeActiveLocation()
-		self.cornerHigh = Vector3(-999999999.0, -999999999.0, -999999999.0)
-		self.cornerLow = Vector3(999999999.0, 999999999.0, 999999999.0)
+		self.cornerMaximum = Vector3(-987654321.0, -987654321.0, -987654321.0)
+		self.cornerMinimum = Vector3(987654321.0, 987654321.0, 987654321.0)
 		self.goAroundExtruderOffTravel = repository.goAroundExtruderOffTravel.value
 		self.lines = archive.getTextLines(gcodeText)
-		self.isThereALayerStartWord = gcodec.isThereAFirstWord('(<layer>', self.lines, 1 )
-		self.parseInitialization()
+		self.isThereALayerStartWord = (gcodec.getFirstWordIndexReverse('(<layer>', self.lines, 1) > -1)
+		if self.isThereALayerStartWord:
+			self.parseInitialization()
+		else:
+			print('')
+			print('')
+			print('')
+			print('Warning, there are no skeinforge comments in this text, probably because they have been removed by export.')
+			print('So there is no loop information, and therefore the lines will not be colored.')
+			print('')
+			print('To see the full information in an exported file, either deselect Delete Comments in export, or')
+			print('select Save Penultimate Gcode in export, and open the generated file with the suffix _penultimate.gcode.')
+			print('')
+			print('')
+			print('')
 		for line in self.lines[self.lineIndex :]:
 			self.parseCorner(line)
+		self.oldZ = - 999987654321.0
 		if len( self.layerTops ) > 0:
 			self.layerTops[-1] += 912345678.9
 		if len( self.layerTops ) > 1:
 			self.oneMinusBrightnessOverTopLayerIndex = ( 1.0 - repository.bottomLayerBrightness.value ) / float( len( self.layerTops ) - 1 )
 		self.firstTopLayer = len( self.layerTops ) - self.repository.numberOfFillTopLayers.value
-		self.centerComplex = 0.5 * ( self.cornerHigh.dropAxis(2) + self.cornerLow.dropAxis(2) )
-		self.centerBottom = Vector3( self.centerComplex.real, self.centerComplex.imag, self.cornerLow.z )
+		self.centerComplex = 0.5 * ( self.cornerMaximum.dropAxis() + self.cornerMinimum.dropAxis() )
+		self.centerBottom = Vector3( self.centerComplex.real, self.centerComplex.imag, self.cornerMinimum.z )
 		self.scale = repository.scale.value
 		self.scaleCenterBottom = self.scale * self.centerBottom
-		self.scaleCornerHigh = self.scale * self.cornerHigh.dropAxis(2)
-		self.scaleCornerLow = self.scale * self.cornerLow.dropAxis(2)
-		print( "The lower left corner of the skeiniso window is at %s, %s" % ( self.cornerLow.x, self.cornerLow.y ) )
-		print( "The upper right corner of the skeiniso window is at %s, %s" % ( self.cornerHigh.x, self.cornerHigh.y ) )
-		self.cornerImaginaryTotal = self.cornerHigh.y + self.cornerLow.y
+		self.scaleCornerHigh = self.scale * self.cornerMaximum.dropAxis()
+		self.scaleCornerLow = self.scale * self.cornerMinimum.dropAxis()
+		print("The lower left corner of the skeiniso window is at %s, %s" % (self.cornerMinimum.x, self.cornerMinimum.y))
+		print("The upper right corner of the skeiniso window is at %s, %s" % (self.cornerMaximum.x, self.cornerMaximum.y))
+		self.cornerImaginaryTotal = self.cornerMaximum.y + self.cornerMinimum.y
 		margin = complex( 5.0, 5.0 )
 		self.marginCornerLow = self.scaleCornerLow - margin
 		self.screenSize = margin + 2.0 * ( self.scaleCornerHigh - self.marginCornerLow )
@@ -550,7 +545,7 @@ class SkeinisoSkein:
 		if len(splitLine) < 1:
 			return
 		firstWord = splitLine[0]
-		if self.isLayerStart(firstWord, splitLine):
+		if tableau.getIsLayerStart(firstWord, self, splitLine):
 			self.layerCount.printProgressIncrement('skeiniso')
 			self.skeinPane = SkeinPane( len( self.skeinPanes ) )
 			self.skeinPanes.append( self.skeinPane )
@@ -571,14 +566,14 @@ class SkeinisoSkein:
 		elif firstWord == '(</loop>)':
 			self.moveColoredThreadToSkeinPane()
 			self.isLoop = False
+		elif firstWord == '(<nestedRing>)':
+			self.hasASurroundingLoopBeenReached = True
 		elif firstWord == '(<perimeter>':
 			self.isPerimeter = True
 			self.isOuter = ( splitLine[1] == 'outer')
 		elif firstWord == '(</perimeter>)':
 			self.moveColoredThreadToSkeinPane()
 			self.isPerimeter = False
-		elif firstWord == '(<surroundingLoop>)':
-			self.hasASurroundingLoopBeenReached = True
 		if firstWord == 'G2' or firstWord == 'G3':
 			relativeLocation = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine)
 			relativeLocation.z = 0.0
@@ -828,7 +823,7 @@ class SkeinWindow( tableau.TableauWindow ):
 	def getDrawnSelectedColoredLine( self, coloredLine ):
 		"Get the drawn selected colored line."
 		projectiveSpace = euclidean.ProjectiveSpace().getByLatitudeLongitude( self.repository.viewpointLatitude.value, self.repository.viewpointLongitude.value )
-		return self.getDrawnColoredLine( self.arrowType, coloredLine, projectiveSpace, 'mouse_item', self.repository.widthOfSelectionThread.value )
+		return self.getDrawnColoredLine( self.arrowType, coloredLine, projectiveSpace, 'selection_line', self.repository.widthOfSelectionThread.value )
 
 	def getScreenComplex( self, pointComplex ):
 		"Get the point in screen perspective."
@@ -878,7 +873,7 @@ class SkeinWindow( tableau.TableauWindow ):
 def main():
 	"Display the skeiniso dialog."
 	if len(sys.argv) > 1:
-		tableau.startMainLoopFromWindow( getWindowAnalyzeFile(' '.join(sys.argv[1 :])) )
+		settings.startMainLoopFromWindow( getWindowAnalyzeFile(' '.join(sys.argv[1 :])) )
 	else:
 		settings.startMainLoopFromConstructor( getNewRepository() )
 

@@ -27,16 +27,24 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
-def addToMenu( master, menu, repository, window ):
+def addToMenu(master, menu, repository, window):
 	"Add a tool plugin menu."
-	settings.addPluginsParentToMenu( skeinforge_analyze.getPluginsDirectoryPath(), menu, __file__, skeinforge_analyze.getPluginFileNames() )
+	pluginsDirectoryPath = skeinforge_analyze.getPluginsDirectoryPath()
+	settings.addPluginsParentToMenu(pluginsDirectoryPath, menu, __file__, skeinforge_analyze.getPluginFileNames())
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return skeinforge_analyze.AnalyzeRepository()
+
+def writeOutput(fileName):
+	"Analyze a gcode file."
+	repository = getNewRepository()
+	repository.fileNameInput.value = fileName
+	repository.execute()
+	settings.startMainLoopFromConstructor(repository)
 
 
 def main():
@@ -44,7 +52,7 @@ def main():
 	if len(sys.argv) > 1:
 		writeOutput(' '.join(sys.argv[1 :]))
 	else:
-		settings.startMainLoopFromConstructor( getNewRepository() )
+		settings.startMainLoopFromConstructor(getNewRepository())
 
 if __name__ == "__main__":
 	main()

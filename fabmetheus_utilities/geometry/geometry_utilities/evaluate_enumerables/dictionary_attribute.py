@@ -12,15 +12,15 @@ from fabmetheus_utilities import euclidean
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Art of Illusion <http://www.artofillusion.org/>'
-__date__ = "$Date: 2008/02/05 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def _getAccessibleAttribute(attributeName, dictionaryObject):
 	'Get the accessible attribute.'
 	if attributeName in globalNativeFunctionSet:
 		return getattr(dictionaryObject, attributeName, None)
-	if attributeName in globalAccessibleAttributeSet:
+	if attributeName in globalGetAccessibleAttributeSet:
 		stringAttribute = DictionaryAttribute(dictionaryObject)
 		return getattr(stringAttribute, attributeName, None)
 	return None
@@ -97,6 +97,6 @@ class DictionaryAttribute:
 
 
 globalAccessibleAttributes = 'count delete getIsIn getIsNotIn getLength getMax getMin index length set'.split()
-globalAccessibleAttributeSet = set(globalAccessibleAttributes)
+globalGetAccessibleAttributeSet = set(globalAccessibleAttributes)
 globalNativeFunctions = 'clear copy fromkeys get items keys pop popitem remove setdefault update values'.split()
 globalNativeFunctionSet = set(globalNativeFunctions)

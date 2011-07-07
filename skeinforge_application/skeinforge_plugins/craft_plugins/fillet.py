@@ -3,7 +3,7 @@ This page is in the table of contents.
 Fillet rounds the corners slightly in a variety of ways.  This is to reduce corner blobbing and sudden extruder acceleration.
 
 The fillet manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Fillet
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Fillet
 
 ==Operation==
 The default 'Activate Fillet' checkbox is off.  When it is on, the functions described below will work, when it is off, the functions will not be called.
@@ -47,29 +47,10 @@ When selected, the feed rate entering the corner will be the average of the old 
 ==Examples==
 The following examples fillet the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and fillet.py.
 
-
 > python fillet.py
 This brings up the fillet dialog.
 
-
 > python fillet.py Screw Holder Bottom.stl
-The fillet tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The fillet tool has created the file:
-.. Screw Holder Bottom_fillet.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import fillet
->>> fillet.main()
-This brings up the fillet dialog.
-
-
->>> fillet.writeOutput('Screw Holder Bottom.stl')
 The fillet tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -97,7 +78,7 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, gcodeText, repository = None ):
@@ -123,14 +104,12 @@ def getCraftedTextFromText( gcodeText, repository = None ):
 	return gcodeText
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return FilletRepository()
 
-def writeOutput(fileName=''):
+def writeOutput(fileName, shouldAnalyze=True):
 	"Fillet a gcode linear move file. Depending on the settings, either arcPoint, arcRadius, arcSegment, bevel or do nothing."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName != '':
-		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'fillet')
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'fillet', shouldAnalyze)
 
 
 class BevelSkein:
@@ -148,7 +127,7 @@ class BevelSkein:
 
 	def addLinearMovePoint( self, feedRateMinute, point ):
 		"Add a gcode linear move, feedRate and newline to the output."
-		self.distanceFeedRate.addLine( self.distanceFeedRate.getLinearGcodeMovementWithFeedRate( feedRateMinute, point.dropAxis(2), point.z ) )
+		self.distanceFeedRate.addLine( self.distanceFeedRate.getLinearGcodeMovementWithFeedRate( feedRateMinute, point.dropAxis(), point.z ) )
 
 	def getCornerFeedRate(self):
 		"Get the corner feed rate, which may be based on the intermediate feed rate."
@@ -224,7 +203,7 @@ class BevelSkein:
 			firstWord = gcodec.getFirstWord(splitLine)
 			self.distanceFeedRate.parseSplitLine(firstWord, splitLine)
 			if firstWord == '(</extruderInitialization>)':
-				self.distanceFeedRate.addLine('(<procedureDone> fillet </procedureDone>)')
+				self.distanceFeedRate.addLine('(<procedureName> fillet </procedureName>)')
 				return
 			elif firstWord == '(<perimeterWidth>':
 				perimeterWidth = abs(float(splitLine[1]))
@@ -255,13 +234,13 @@ class BevelSkein:
 		if self.filletRadius < 2.0 * self.minimumRadius:
 			return location
 		afterSegment = nextLocation - location
-		afterSegmentComplex = afterSegment.dropAxis(2)
+		afterSegmentComplex = afterSegment.dropAxis()
 		afterSegmentComplexLength = abs( afterSegmentComplex )
 		thirdAfterSegmentLength = 0.333 * afterSegmentComplexLength
 		if thirdAfterSegmentLength < self.minimumRadius:
 			return location
 		beforeSegment = self.oldLocation - location
-		beforeSegmentComplex = beforeSegment.dropAxis(2)
+		beforeSegmentComplex = beforeSegment.dropAxis()
 		beforeSegmentComplexLength = abs( beforeSegmentComplex )
 		thirdBeforeSegmentLength = 0.333 * beforeSegmentComplexLength
 		if thirdBeforeSegmentLength < self.minimumRadius:
@@ -298,12 +277,12 @@ class ArcSegmentSkein( BevelSkein ):
 		if self.filletRadius < 2.0 * self.minimumRadius:
 			return location
 		afterSegment = nextLocation - location
-		afterSegmentComplex = afterSegment.dropAxis(2)
+		afterSegmentComplex = afterSegment.dropAxis()
 		thirdAfterSegmentLength = 0.333 * abs( afterSegmentComplex )
 		if thirdAfterSegmentLength < self.minimumRadius:
 			return location
 		beforeSegment = self.oldLocation - location
-		beforeSegmentComplex = beforeSegment.dropAxis(2)
+		beforeSegmentComplex = beforeSegment.dropAxis()
 		thirdBeforeSegmentLength = 0.333 * abs( beforeSegmentComplex )
 		if thirdBeforeSegmentLength < self.minimumRadius:
 			return location
@@ -316,11 +295,11 @@ class ArcSegmentSkein( BevelSkein ):
 		beforePoint = euclidean.getPointPlusSegmentWithLength( bevelRadius * abs( beforeSegment ) / abs( beforeSegmentComplex ), location, beforeSegment )
 		self.addLinearMovePoint( self.feedRateMinute, beforePoint )
 		afterPoint = euclidean.getPointPlusSegmentWithLength( bevelRadius * abs( afterSegment ) / abs( afterSegmentComplex ), location, afterSegment )
-		afterPointComplex = afterPoint.dropAxis(2)
-		beforePointComplex = beforePoint.dropAxis(2)
-		locationComplex = location.dropAxis(2)
+		afterPointComplex = afterPoint.dropAxis()
+		beforePointComplex = beforePoint.dropAxis()
+		locationComplex = location.dropAxis()
 		midpoint = 0.5 * ( afterPoint + beforePoint )
-		midpointComplex = midpoint.dropAxis(2)
+		midpointComplex = midpoint.dropAxis()
 		midpointMinusLocationComplex = midpointComplex - locationComplex
 		midpointLocationLength = abs( midpointMinusLocationComplex )
 		if midpointLocationLength < 0.01 * self.filletRadius:
@@ -349,7 +328,7 @@ class ArcPointSkein( ArcSegmentSkein ):
 		firstWord = 'G3'
 		if afterCenterDifferenceAngle < 0.0:
 			firstWord = 'G2'
-		centerMinusBeforeComplex = centerMinusBefore.dropAxis(2)
+		centerMinusBeforeComplex = centerMinusBefore.dropAxis()
 		if abs( centerMinusBeforeComplex ) <= 0.0:
 			return
 		radius = abs( centerMinusBefore )
@@ -382,7 +361,7 @@ class FilletRepository:
 		"Set the default settings, execute title & settings fileName."
 		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.fillet.html', self )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File to be Filleted', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Fillet')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Fillet')
 		self.activateFillet = settings.BooleanSetting().getFromValue('Activate Fillet', self, False )
 		self.filletProcedureChoiceLabel = settings.LabelDisplay().getFromName('Fillet Procedure Choice: ', self )
 		filletLatentStringVar = settings.LatentStringVar()

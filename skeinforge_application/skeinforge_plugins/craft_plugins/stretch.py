@@ -3,7 +3,7 @@ This page is in the table of contents.
 Stretch is a script to stretch the threads to partially compensate for filament shrinkage when extruded.
 
 The stretch manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Stretch
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Stretch
 
 All the defaults assume that the thread sequence choice setting in fill is the perimeter being extruded first, then the loops, then the infill.  If the thread sequence choice is different, the optimal thread parameters will also be different.  In general, if the infill is extruded first, the infill would have to be stretched more so that even after the filament shrinkage, it would still be long enough to connect to the loop or perimeter.
 
@@ -40,10 +40,8 @@ In general, stretch will widen holes and push corners out.  The algorithm works 
 ==Examples==
 The following examples stretch the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and stretch.py.
 
-
 > python stretch.py
 This brings up the stretch dialog.
-
 
 > python stretch.py Screw Holder Bottom.stl
 The stretch tool is parsing the file:
@@ -51,24 +49,6 @@ Screw Holder Bottom.stl
 ..
 The stretch tool has created the file:
 .. Screw Holder Bottom_stretch.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import stretch
->>> stretch.main()
-This brings up the stretch dialog.
-
-
->>> stretch.writeOutput('Screw Holder Bottom.stl')
-The stretch tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The stretch tool has created the file:
-.. Screw Holder Bottom_stretch.gcode
-
 
 """
 
@@ -91,7 +71,7 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 #maybe speed up feedRate option
@@ -110,14 +90,12 @@ def getCraftedTextFromText( gcodeText, stretchRepository = None ):
 	return StretchSkein().getCraftedGcode( gcodeText, stretchRepository )
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return StretchRepository()
 
-def writeOutput(fileName=''):
-	"Stretch a gcode linear move file.  Chain stretch the gcode if it is not already stretched.  If no fileName is specified, stretch the first unmodified gcode file in this folder."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName != '':
-		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'stretch')
+def writeOutput(fileName, shouldAnalyze=True):
+	"Stretch a gcode linear move file.  Chain stretch the gcode if it is not already stretched."
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'stretch', shouldAnalyze)
 
 
 class LineIteratorBackward:
@@ -231,7 +209,7 @@ class StretchRepository:
 		"Set the default settings, execute title & settings fileName."
 		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.stretch.html', self )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Stretch', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Stretch')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Stretch')
 		self.activateStretch = settings.BooleanSetting().getFromValue('Activate Stretch', self, False )
 		self.crossLimitDistanceOverPerimeterWidth = settings.FloatSpin().getFromValue( 3.0, 'Cross Limit Distance Over Perimeter Width (ratio):', self, 10.0, 5.0 )
 		self.loopStretchOverPerimeterWidth = settings.FloatSpin().getFromValue( 0.05, 'Loop Stretch Over Perimeter Width (ratio):', self, 0.25, 0.11 )
@@ -280,7 +258,7 @@ class StretchSkein:
 		except StopIteration:
 			return crossLimitedStretch
 		splitLine = gcodec.getSplitLineBeforeBracketSemicolon(line)
-		pointComplex = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine).dropAxis(2)
+		pointComplex = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine).dropAxis()
 		pointMinusLocation = locationComplex - pointComplex
 		pointMinusLocationLength = abs( pointMinusLocation )
 		if pointMinusLocationLength <= self.crossLimitDistanceFraction:
@@ -311,7 +289,7 @@ class StretchSkein:
 				return complex()
 			splitLine = gcodec.getSplitLineBeforeBracketSemicolon(line)
 			firstWord = splitLine[0]
-			pointComplex = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine).dropAxis(2)
+			pointComplex = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine).dropAxis()
 			locationMinusPoint = lastLocationComplex - pointComplex
 			locationMinusPointLength = abs( locationMinusPoint )
 			totalLength += locationMinusPointLength
@@ -340,7 +318,7 @@ class StretchSkein:
 		crossIteratorBackward = LineIteratorBackward( self.isLoop, indexPreviousStart, self.lines )
 		iteratorForward = LineIteratorForward( self.isLoop, indexNextStart, self.lines )
 		iteratorBackward = LineIteratorBackward( self.isLoop, indexPreviousStart, self.lines )
-		locationComplex = location.dropAxis(2)
+		locationComplex = location.dropAxis()
 		relativeStretch = self.getRelativeStretch( locationComplex, iteratorForward ) + self.getRelativeStretch( locationComplex, iteratorBackward )
 		relativeStretch *= 0.8
 #		print('relativeStretch')
@@ -352,7 +330,7 @@ class StretchSkein:
 		if relativeStretchLength > 1.0:
 			relativeStretch /= relativeStretchLength
 		absoluteStretch = relativeStretch * self.threadMaximumAbsoluteStretch
-		stretchedPoint = location.dropAxis(2) + absoluteStretch
+		stretchedPoint = location.dropAxis() + absoluteStretch
 		return self.distanceFeedRate.getLinearGcodeMovementWithFeedRate( self.feedRateMinute, stretchedPoint, location.z )
 
 	def isJustBeforeExtrusion(self):
@@ -376,7 +354,7 @@ class StretchSkein:
 			firstWord = gcodec.getFirstWord(splitLine)
 			self.distanceFeedRate.parseSplitLine(firstWord, splitLine)
 			if firstWord == '(</extruderInitialization>)':
-				self.distanceFeedRate.addLine('(<procedureDone> stretch </procedureDone>)')
+				self.distanceFeedRate.addLine('(<procedureName> stretch </procedureName>)')
 				return
 			elif firstWord == '(<perimeterWidth>':
 				perimeterWidth = float(splitLine[1])

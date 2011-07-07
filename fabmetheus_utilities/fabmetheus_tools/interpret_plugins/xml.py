@@ -6,21 +6,6 @@ An import plugin is a script in the interpret_plugins folder which has the funct
 
 The getCarving function takes the file name of an xml file and returns the carving.
 
-This example gets a triangle mesh for the xml file boolean.xml.  This example is run in a terminal in the folder which contains boolean.xml and xml.py.
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import xml
->>> xml.getCarving().getCarveRotatedBoundaryLayers()
-[-1.159765625, None, [[(-18.925000000000001-2.4550000000000001j), (-18.754999999999981-2.4550000000000001j)
-..
-many more lines of the carving
-..
-
-
 An example of an xml boolean geometry format file follows below.
 
 <?xml version='1.0' ?>
@@ -29,7 +14,7 @@ An example of an xml boolean geometry format file follows below.
 		<matrix m14="-10.0" m24="20.0" m34="5.0" />
 		<cube id="Cube 5" halfx="5.0" halfy="5.0" halfz="5.0">
 		</cube>
-		<cylinder id="Cylinder 5" height="10.0" radiusx="5.0" radiusy="5.0" topoverbottom="1.0">
+		<cylinder id="Cylinder 5" height="10.0" radiusx="5.0" radiusy="5.0" topOverBottom="1.0">
 			<matrix m14="5.0" m24="-5.0" />
 		</cylinder>
 	</difference>
@@ -43,7 +28,7 @@ In the 'fabmetheus' format, all class names are lower case.  The defined geometr
 		<matrix m14="-10.0" m24="20.0" m34="5.0" />
 		<cube id="Cube 5" halfx="5.0" halfy="5.0" halfz="5.0">
 		</cube>
-		<cylinder id="Cylinder 5" height="10.0" radiusx="5.0" radiusy="5.0" topoverbottom="1.0">
+		<cylinder id="Cylinder 5" height="10.0" radiusx="5.0" radiusy="5.0" topOverBottom="1.0">
 			<matrix m14="5.0" m24="-5.0" />
 		</cylinder>
 	</difference>
@@ -51,7 +36,7 @@ In the 'fabmetheus' format, all class names are lower case.  The defined geometr
 		<matrix m14="-10.0" m34="5.0" />
 		<cube id="Cube 5" halfx="5.0" halfy="5.0" halfz="5.0">
 		</cube>
-		<cylinder id="Cylinder 5" height="10.0" radiusx="5.0" radiusy="5.0" topoverbottom="1.0">
+		<cylinder id="Cylinder 5" height="10.0" radiusx="5.0" radiusy="5.0" topOverBottom="1.0">
 			<matrix m14="5.0" m24="-5.0" />
 		</cylinder>
 	</intersection>
@@ -59,7 +44,7 @@ In the 'fabmetheus' format, all class names are lower case.  The defined geometr
 		<matrix m14="-10.0" m24="-20.0" m34="5.0" />
 		<cube id="Cube 5" halfx="5.0" halfy="5.0" halfz="5.0">
 		</cube>
-		<cylinder id="Cylinder 5" height="10.0" radiusx="5.0" radiusy="5.0" topoverbottom="1.0">
+		<cylinder id="Cylinder 5" height="10.0" radiusx="5.0" radiusy="5.0" topOverBottom="1.0">
 			<matrix m14="5.0" m24="-5.0" />
 		</cylinder>
 	</union>
@@ -115,7 +100,7 @@ import sys
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Nophead <http://hydraraptor.blogspot.com/>\nArt of Illusion <http://www.artofillusion.org/>'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCarving(fileName=''):

@@ -4,7 +4,7 @@ The unpause script is based on the Shane Hathaway's patch to speed up a line seg
 http://shane.willowrise.com/archives/delay-compensation-in-firmware/
 
 The unpause manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Unpause
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Unpause
 
 ==Operation==
 The default 'Activate Unpause' checkbox is off.  When it is on, the functions described below will work, when it is off, the functions will not be called.
@@ -23,29 +23,10 @@ Defines the maximum amount that the feed rate will be sped up to, compared to th
 ==Examples==
 The following examples unpause the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and unpause.py.
 
-
 > python unpause.py
 This brings up the unpause dialog.
 
-
 > python unpause.py Screw Holder Bottom.stl
-The unpause tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The unpause tool has created the file:
-.. Screw Holder Bottom_unpause.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import unpause
->>> unpause.main()
-This brings up the unpause dialog.
-
-
->>> unpause.writeOutput('Screw Holder Bottom.stl')
 The unpause tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -66,13 +47,14 @@ from fabmetheus_utilities.fabmetheus_tools import fabmetheus_interpret
 from fabmetheus_utilities import settings
 from skeinforge_application.skeinforge_utilities import skeinforge_craft
 from skeinforge_application.skeinforge_utilities import skeinforge_polyfile
+from skeinforge_application.skeinforge_utilities import skeinforge_profile
 import math
 import sys
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, gcodeText, repository=None):
@@ -90,7 +72,7 @@ def getCraftedTextFromText(gcodeText, repository=None):
 	return UnpauseSkein().getCraftedGcode(gcodeText, repository)
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return UnpauseRepository()
 
 def getSelectedPlugin(repository):
@@ -100,20 +82,18 @@ def getSelectedPlugin(repository):
 			return plugin
 	return None
 
-def writeOutput(fileName=''):
+def writeOutput(fileName, shouldAnalyze=True):
 	"Unpause a gcode linear move file."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName != '':
-		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'unpause')
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'unpause', shouldAnalyze)
 
 
 class UnpauseRepository:
 	"A class to handle the unpause settings."
 	def __init__(self):
 		"Set the default settings, execute title & settings fileName."
-		settings.addListsToRepository('skeinforge_application.skeinforge_plugins.craft_plugins.unpause.html', None, self )
+		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.unpause.html', self)
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Unpause', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Unpause')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Unpause')
 		self.activateUnpause = settings.BooleanSetting().getFromValue('Activate Unpause', self, False )
 		self.delay = settings.FloatSpin().getFromValue( 2.0, 'Delay (milliseconds):', self, 42.0, 28.0 )
 		self.maximumSpeed = settings.FloatSpin().getFromValue( 1.1, 'Maximum Speed (ratio):', self, 1.9, 1.3 )
@@ -185,7 +165,7 @@ class UnpauseSkein:
 			firstWord = gcodec.getFirstWord(splitLine)
 			self.distanceFeedRate.parseSplitLine(firstWord, splitLine)
 			if firstWord == '(</extruderInitialization>)':
-				self.distanceFeedRate.addLine('(<procedureDone> unpause </procedureDone>)')
+				self.distanceFeedRate.addLine('(<procedureName> unpause </procedureName>)')
 				return
 			self.distanceFeedRate.addLine(line)
 

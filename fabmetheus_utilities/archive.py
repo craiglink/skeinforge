@@ -15,14 +15,17 @@ import traceback
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Art of Illusion <http://www.artofillusion.org/>'
 __date__ = '$Date: 2008/02/05 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
+
+
+globalTemporarySettingsPath = os.path.join(os.path.expanduser('~'), '.skeinforge')
 
 
 def addToNamePathDictionary(directoryPath, namePathDictionary):
 	'Add to the name path dictionary.'
 	pluginFileNames = getPluginFileNamesFromDirectoryPath(directoryPath)
 	for pluginFileName in pluginFileNames:
-		namePathDictionary[pluginFileName.lstrip('_')] = os.path.join(directoryPath, pluginFileName)
+		namePathDictionary[pluginFileName.replace('_', '')] = os.path.join(directoryPath, pluginFileName)
 	return getAbsoluteFrozenFolderPath( __file__, 'skeinforge_plugins')
 
 def getAbsoluteFolderPath(filePath, folderName=''):
@@ -61,11 +64,24 @@ def getFabmetheusUtilitiesPath(subName=''):
 	'Get the fabmetheus utilities directory path.'
 	return getJoinedPath(getFabmetheusPath('fabmetheus_utilities'), subName)
 
+def getFileNamesByFilePaths(pluginFilePaths):
+	'Get the file names of the plugins by the file paths.'
+	fileNames = []
+	for pluginFilePath in pluginFilePaths:
+		pluginBasename = os.path.basename(pluginFilePath)
+		pluginBasename = getUntilDot(pluginBasename)
+		fileNames.append(pluginBasename)
+	return fileNames
+
 def getFilePaths(fileInDirectory=''):
 	'Get the file paths in the directory of the file in directory.'
 	directoryName = os.getcwd()
 	if fileInDirectory != '':
 		directoryName = os.path.dirname(fileInDirectory)
+	return getFilePathsByDirectory(directoryName)
+
+def getFilePathsByDirectory(directoryName):
+	'Get the file paths in the directory of the file in directory.'
 	absoluteDirectoryPath = os.path.abspath(directoryName)
 	directory = os.listdir(directoryName)
 	filePaths = []
@@ -91,7 +107,7 @@ def getFilePathWithUnderscoredBasename(fileName, suffix):
 	suffixReplacedBaseName = os.path.basename(suffixFileName).replace(' ', '_')
 	return os.path.join(suffixDirectoryName, suffixReplacedBaseName)
 
-def getFileText(fileName, readMode = 'r', printWarning=True):
+def getFileText(fileName, printWarning=True, readMode='r'):
 	'Get the entire text of a file.'
 	try:
 		file = open(fileName, readMode)
@@ -101,12 +117,12 @@ def getFileText(fileName, readMode = 'r', printWarning=True):
 	except IOError:
 		if printWarning:
 			print('The file ' + fileName + ' does not exist.')
-		return ''
+	return ''
 
 def getFileTextInFileDirectory(fileInDirectory, fileName, readMode='r'):
 	'Get the entire text of a file in the directory of the file in directory.'
 	absoluteFilePathInFileDirectory = os.path.join(os.path.dirname(fileInDirectory), fileName)
-	return getFileText(absoluteFilePathInFileDirectory, readMode)
+	return getFileText(absoluteFilePathInFileDirectory, True, readMode)
 
 def getFilesWithFileTypesWithoutWords(fileTypes, words = [], fileInDirectory=''):
 	'Get files which have a given file type, but with do not contain a word in a list.'
@@ -197,13 +213,7 @@ def getModuleWithPath(path):
 def getPluginFileNamesFromDirectoryPath(directoryPath):
 	'Get the file names of the python plugins in the directory path.'
 	fileInDirectory = os.path.join(directoryPath, '__init__.py')
-	fullPluginFileNames = getPythonFileNamesExceptInit(fileInDirectory)
-	pluginFileNames = []
-	for fullPluginFileName in fullPluginFileNames:
-		pluginBasename = os.path.basename(fullPluginFileName)
-		pluginBasename = getUntilDot(pluginBasename)
-		pluginFileNames.append(pluginBasename)
-	return pluginFileNames
+	return getFileNamesByFilePaths(getPythonFileNamesExceptInit(fileInDirectory))
 
 def getProfilesPath(subName=''):
 	'Get the profiles directory path, which is the settings directory joined with profiles.'
@@ -249,17 +259,11 @@ def getPythonFileNamesExceptInitRecursively(directoryName=''):
 	pythonFileNamesExceptInitRecursively.sort()
 	return pythonFileNamesExceptInitRecursively
 
-settingsPath = os.path.join(os.path.expanduser('~'), '.skeinforge')
-
 def getSettingsPath(subName=''):
-	'Get the settings directory path, which defaults to the home directory joined with .skeinforge.'
-	global settingsPath
-	return getJoinedPath(settingsPath, subName)
-
-def setSettingsPath(path):
-	'Set the base settings directory path.'
-	global settingsPath
-	settingsPath = path
+	'Get the settings directory path, which is the home directory joined with .skeinforge.'
+	global globalTemporarySettingsPath
+	return getJoinedPath(globalTemporarySettingsPath, subName)
+#	return getJoinedPath(os.path.join(os.path.expanduser('~'), '.skeinforge'), subName)
 
 def getSummarizedFileName(fileName):
 	'Get the fileName basename if the file is in the current working directory, otherwise return the original full name.'
@@ -279,7 +283,11 @@ def getTextIfEmpty(fileName, text):
 
 def getTextLines(text):
 	'Get the all the lines of text of a text.'
-	return text.replace('\r', '\n').replace('\n\n', '\n').split('\n')
+	textLines = text.replace('\r', '\n').replace('\n\n', '\n').split('\n')
+	if len(textLines) == 1:
+		if textLines[0] == '':
+			return []
+	return textLines
 
 def getUntilDot(text):
 	'Get the text until the last dot, if any.'
@@ -308,6 +316,8 @@ def makeDirectory(directory):
 	if os.path.isdir(directory):
 		return
 	try:
+		print('The following directory was made:')
+		print(os.path.abspath(directory))
 		os.makedirs(directory)
 	except OSError:
 		print('Skeinforge can not make the directory %s so give it read/write permission for that directory and the containing directory.' % directory)

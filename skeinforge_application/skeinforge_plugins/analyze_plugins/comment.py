@@ -3,13 +3,12 @@ This page is in the table of contents.
 Comment is a script to comment a gcode file.
 
 The comment manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Comment
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Comment
 
 ==Operation==
 The default 'Activate Comment' checkbox is on.  When it is on, the functions described below will work when called from the skeinforge toolchain, when it is off, the functions will not be called from the toolchain.  The functions will still be called, whether or not the 'Activate Comment' checkbox is on, when comment is run directly.
 
 ==Gcodes==
-
 An explanation of the gcodes is at:
 http://reprap.org/bin/view/Main/Arduino_GCode_Interpreter
 
@@ -20,28 +19,13 @@ A gode example is at:
 http://forums.reprap.org/file.php?12,file=565
 
 ==Examples==
-
 Below are examples of comment being used.  These examples are run in a terminal in the folder which contains Screw_Holder_penultimate.gcode and comment.py.
 
 > python comment.py
 This brings up the comment dialog.
 
-
 > python comment.py Screw Holder_penultimate.gcode
 The comment file is saved as Screw_Holder_penultimate_comment.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import comment
->>> comment.main()
-This brings up the comment dialog.
-
-
->>> comment.getWindowAnalyzeFile('Screw Holder_penultimate.gcode')
-The commente file is saved as Screw_Holder_penultimate_comment.gcode
 
 """
 
@@ -53,17 +37,18 @@ from fabmetheus_utilities import archive
 from fabmetheus_utilities import gcodec
 from fabmetheus_utilities import settings
 from skeinforge_application.skeinforge_utilities import skeinforge_polyfile
+from skeinforge_application.skeinforge_utilities import skeinforge_profile
 import cStringIO
 import sys
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return CommentRepository()
 
 def getWindowAnalyzeFile(fileName):
@@ -90,8 +75,8 @@ class CommentRepository:
 	"A class to handle the comment settings."
 	def __init__(self):
 		"Set the default settings, execute title & settings fileName."
-		settings.addListsToRepository('skeinforge_application.skeinforge_plugins.analyze_plugins.comment.html', None, self )
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Comment')
+		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.analyze_plugins.comment.html', self)
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Comment')
 		self.activateComment = settings.BooleanSetting().getFromValue('Activate Comment', self, False )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( [ ('Gcode text files', '*.gcode') ], 'Open File to Write Comments for', self, '')
 		self.executeTitle = 'Write Comments'

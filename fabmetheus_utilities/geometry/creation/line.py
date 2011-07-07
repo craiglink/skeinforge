@@ -8,6 +8,7 @@ from __future__ import absolute_import
 import __init__
 
 from fabmetheus_utilities.geometry.creation import lineation
+from fabmetheus_utilities.geometry.geometry_tools import path
 from fabmetheus_utilities.geometry.geometry_utilities import evaluate
 from fabmetheus_utilities.vector3 import Vector3
 from fabmetheus_utilities import euclidean
@@ -16,15 +17,14 @@ import math
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Art of Illusion <http://www.artofillusion.org/>'
-__date__ = "$Date: 2008/02/05 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getGeometryOutput(derivation, xmlElement):
 	"Get vector3 vertexes from attribute dictionary."
 	if derivation == None:
-		derivation = LineDerivation()
-		derivation.setToXMLElement(xmlElement)
+		derivation = LineDerivation(xmlElement)
 	endMinusStart = derivation.end - derivation.start
 	endMinusStartLength = abs(endMinusStart)
 	if endMinusStartLength <= 0.0:
@@ -82,31 +82,27 @@ def getGeometryOutputByStep(end, loop, steps, stepVector, xmlElement):
 	loop.append(end)
 	return lineation.getGeometryOutputByLoop(lineation.SideLoop(loop), xmlElement)
 
+def getNewDerivation(xmlElement):
+	'Get new derivation.'
+	return LineDerivation(xmlElement)
+
 def processXMLElement(xmlElement):
 	"Process the xml element."
-	lineation.processXMLElementByGeometry(getGeometryOutput(None, xmlElement), xmlElement)
+	path.convertXMLElement(getGeometryOutput(None, xmlElement), xmlElement)
 
 
 class LineDerivation:
 	"Class to hold line variables."
-	def __init__(self):
+	def __init__(self, xmlElement):
 		'Set defaults.'
-		self.closed = False
-		self.end = Vector3()
-		self.step = None
-		self.steps = None
-		self.start = Vector3()
-		self.typeString = 'minimum'
+		self.closed = evaluate.getEvaluatedBoolean(False, 'closed', xmlElement)
+		self.end = evaluate.getVector3ByPrefix(Vector3(), 'end', xmlElement)
+		self.start = evaluate.getVector3ByPrefix(Vector3(), 'start', xmlElement)
+		self.step = evaluate.getEvaluatedFloat(None, 'step', xmlElement)
+		self.steps = evaluate.getEvaluatedFloat(None, 'steps', xmlElement)
+		self.typeMenuRadioStrings = 'average maximum minimum'.split()
+		self.typeString = evaluate.getEvaluatedString('minimum', 'type', xmlElement)
 
 	def __repr__(self):
 		"Get the string representation of this LineDerivation."
 		return str(self.__dict__)
-
-	def setToXMLElement(self, xmlElement):
-		"Set to the xmlElement."
-		self.closed = evaluate.getEvaluatedBooleanDefault(False, 'closed', xmlElement)
-		self.end = evaluate.getVector3ByPrefix(self.end, 'end', xmlElement)
-		self.start = evaluate.getVector3ByPrefix(self.start, 'start', xmlElement)
-		self.step = evaluate.getEvaluatedFloatDefault(self.step, 'step', xmlElement)
-		self.steps = evaluate.getEvaluatedFloatDefault(self.steps, 'steps', xmlElement)
-		self.typeString = evaluate.getEvaluatedStringDefault(self.typeString, 'type', xmlElement)

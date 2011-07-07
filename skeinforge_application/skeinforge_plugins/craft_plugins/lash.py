@@ -3,7 +3,7 @@ This page is in the table of contents.
 Lash is a script to partially compensate for the backlash of the tool head.
 
 The lash manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Lash
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Lash
 
 The lash tool is ported from Erik de Bruijn's 3D-to-5D-Gcode php GPL'd script at:
 http://objects.reprap.org/wiki/3D-to-5D-Gcode.php
@@ -27,10 +27,8 @@ Defines the distance the tool head will be lashed in the Y direction.
 ==Examples==
 The following examples lash the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and lash.py.
 
-
 > python lash.py
 This brings up the lash dialog.
-
 
 > python lash.py Screw Holder Bottom.stl
 The lash tool is parsing the file:
@@ -38,24 +36,6 @@ Screw Holder Bottom.stl
 ..
 The lash tool has created the file:
 .. Screw Holder Bottom_lash.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import lash
->>> lash.main()
-This brings up the lash dialog.
-
-
->>> lash.writeOutput('Screw Holder Bottom.stl')
-The lash tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The lash tool has created the file:
-.. Screw Holder Bottom_lash.gcode
-
 
 """
 
@@ -69,17 +49,18 @@ from fabmetheus_utilities import gcodec
 from fabmetheus_utilities import settings
 from skeinforge_application.skeinforge_utilities import skeinforge_craft
 from skeinforge_application.skeinforge_utilities import skeinforge_polyfile
+from skeinforge_application.skeinforge_utilities import skeinforge_profile
 import sys
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, text, lashRepository = None ):
 	"Get a lashed gcode linear move text."
-	return getCraftedTextFromText( archive.getTextIfEmpty( fileName, text ), lashRepository )
+	return getCraftedTextFromText( archive.getTextIfEmpty(fileName, text), lashRepository )
 
 def getCraftedTextFromText( gcodeText, lashRepository = None ):
 	"Get a lashed gcode linear move text from text."
@@ -92,23 +73,21 @@ def getCraftedTextFromText( gcodeText, lashRepository = None ):
 	return LashSkein().getCraftedGcode( gcodeText, lashRepository )
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return LashRepository()
 
-def writeOutput(fileName=''):
+def writeOutput(fileName, shouldAnalyze=True):
 	"Lash a gcode linear move file."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName != '':
-		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'lash')
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'lash', shouldAnalyze)
 
 
 class LashRepository:
 	"A class to handle the lash settings."
 	def __init__(self):
 		"Set the default settings, execute title & settings fileName."
-		settings.addListsToRepository('skeinforge_application.skeinforge_plugins.craft_plugins.lash.html', None, self )
+		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.lash.html', self)
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Lash', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Lash')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Lash')
 		self.activateLash = settings.BooleanSetting().getFromValue('Activate Lash', self, False )
 		self.xBacklash = settings.FloatSpin().getFromValue( 0.1, 'X Backlash (mm):', self, 0.5, 0.2 )
 		self.yBacklash = settings.FloatSpin().getFromValue( 0.1, 'Y Backlash (mm):', self, 0.5, 0.3 )
@@ -164,7 +143,7 @@ class LashSkein:
 			firstWord = gcodec.getFirstWord(splitLine)
 			self.distanceFeedRate.parseSplitLine(firstWord, splitLine)
 			if firstWord == '(</extruderInitialization>)':
-				self.distanceFeedRate.addLine('(<procedureDone> lash </procedureDone>)')
+				self.distanceFeedRate.addLine('(<procedureName> lash </procedureName>)')
 				return
 			self.distanceFeedRate.addLine(line)
 

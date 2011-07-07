@@ -8,7 +8,7 @@ from __future__ import absolute_import
 #Init has to be imported first because it has code to workaround the python bug where relative imports don't work if the module is imported as a main module.
 import __init__
 
-from fabmetheus_utilities.geometry.solids import trianglemesh
+from fabmetheus_utilities.geometry.solids import triangle_mesh
 from fabmetheus_utilities.xml_simple_reader import XMLSimpleReader
 from fabmetheus_utilities import archive
 from fabmetheus_utilities import euclidean
@@ -25,7 +25,7 @@ import traceback
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Nophead <http://hydraraptor.blogspot.com/>\nArt of Illusion <http://www.artofillusion.org/>'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 globalNumberOfCornerPoints = 11
@@ -159,7 +159,7 @@ def getFontReader(fontFamily):
 		return globalFontReaderDictionary[fontLower]
 	global globalFontFileNames
 	if globalFontFileNames == None:
-		globalFontFileNames = archive.getPluginFileNamesFromDirectoryPath(getFontsDirectoryPath())
+		globalFontFileNames = archive.getFileNamesByFilePaths(archive.getFilePathsByDirectory(getFontsDirectoryPath()))
 	if fontLower not in globalFontFileNames:
 		print('Warning, the %s font was not found in the fonts folder, so Gentium Basic Regular will be substituted.' % fontFamily)
 		fontLower = 'gentium_basic_regular'
@@ -360,21 +360,23 @@ def processSVGElementellipse( svgReader, xmlElement ):
 		loop.append( center + complex( unitPolar.real * radius.real, unitPolar.imag * radius.imag ) )
 	rotatedLoopLayer.loops += getTransformedFillOutline(loop, xmlElement, svgReader.yAxisPointingUpward)
 
-def processSVGElementg( svgReader, xmlElement ):
-	"Process xmlElement by svgReader."
+def processSVGElementg(svgReader, xmlElement):
+	'Process xmlElement by svgReader.'
 	if 'id' not in xmlElement.attributeDictionary:
 		return
-	idString = xmlElement.attributeDictionary['id'].lower()
-	if idString == 'beginningofcontrolsection':
-		svgReader.stopProcessing = True
+	idString = xmlElement.attributeDictionary['id']
+	if 'beginningOfControlSection' in xmlElement.attributeDictionary:
+		if xmlElement.attributeDictionary['beginningOfControlSection'].lower()[: 1] == 't':
+			svgReader.stopProcessing = True
 		return
-	zIndex = idString.find('z:')
+	idStringLower = idString.lower()
+	zIndex = idStringLower.find('z:')
 	if zIndex < 0:
-		idString = getLabelString(xmlElement.attributeDictionary)
-		zIndex = idString.find('z:')
+		idStringLower = getLabelString(xmlElement.attributeDictionary)
+		zIndex = idStringLower.find('z:')
 	if zIndex < 0:
 		return
-	floatFromValue = euclidean.getFloatFromValue( idString[ zIndex + len('z:') : ].strip() )
+	floatFromValue = euclidean.getFloatFromValue(idStringLower[zIndex + len('z:') :].strip())
 	if floatFromValue != None:
 		svgReader.z = floatFromValue
 	svgReader.bridgeRotation = euclidean.getComplexDefaultByDictionary( None, xmlElement.attributeDictionary, 'bridgeRotation')
@@ -732,13 +734,13 @@ class PathReader:
 	def processPathWordC(self):
 		'Process path word C.'
 		end = self.getComplexByExtraIndex( 5 )
-		self.addPathCubic( [ self.getComplexByExtraIndex( 1 ), self.getComplexByExtraIndex( 3 ) ], end )
+		self.addPathCubic( [ self.getComplexByExtraIndex( 1 ), self.getComplexByExtraIndex(3) ], end )
 
 	def processPathWordc(self):
 		'Process path word C.'
 		begin = self.getOldPoint()
 		end = self.getComplexByExtraIndex( 5 )
-		self.addPathCubic( [ self.getComplexByExtraIndex( 1 ) + begin, self.getComplexByExtraIndex( 3 ) + begin ], end + begin )
+		self.addPathCubic( [ self.getComplexByExtraIndex( 1 ) + begin, self.getComplexByExtraIndex(3) + begin ], end + begin )
 
 	def processPathWordH(self):
 		"Process path word H."
@@ -780,7 +782,7 @@ class PathReader:
 
 	def processPathWordQ(self):
 		'Process path word Q.'
-		self.addPathQuadratic( self.getComplexByExtraIndex( 1 ), self.getComplexByExtraIndex( 3 ) )
+		self.addPathQuadratic( self.getComplexByExtraIndex( 1 ), self.getComplexByExtraIndex(3) )
 
 	def processPathWordq(self):
 		'Process path word q.'
@@ -789,7 +791,7 @@ class PathReader:
 
 	def processPathWordS(self):
 		'Process path word S.'
-		self.addPathCubicReflected( self.getComplexByExtraIndex( 1 ), self.getComplexByExtraIndex( 3 ) )
+		self.addPathCubicReflected( self.getComplexByExtraIndex( 1 ), self.getComplexByExtraIndex(3) )
 
 	def processPathWords(self):
 		'Process path word s.'
@@ -846,6 +848,7 @@ class SVGReader:
 		"Add empty lists."
 		self.bridgeRotation = None
 		self.rotatedLoopLayers = []
+		self.sliceDictionary = None
 		self.stopProcessing = False
 		self.z = 0.0
 
@@ -854,7 +857,7 @@ class SVGReader:
 		for loop in rotatedLoopLayer.loops:
 			for pointIndex, point in enumerate(loop):
 				loop[pointIndex] = complex(point.real, -point.imag)
-		rotatedLoopLayer.loops = trianglemesh.getLoopsInOrderOfArea(trianglemesh.compareAreaDescending, rotatedLoopLayer.loops)
+		triangle_mesh.sortLoopsInOrderOfArea(True, rotatedLoopLayer.loops)
 		for loopIndex, loop in enumerate(rotatedLoopLayer.loops):
 			isInsideLoops = euclidean.getIsInFilledRegion(rotatedLoopLayer.loops[: loopIndex], euclidean.getLeftPoint(loop))
 			intercircle.directLoop((not isInsideLoops), loop)
@@ -872,12 +875,17 @@ class SVGReader:
 		"Parse SVG text and store the layers."
 		self.fileName = fileName
 		xmlParser = XMLSimpleReader(fileName, None, svgText)
-		self.parseSVGByXMLElement(xmlParser.getRoot())
+		self.root = xmlParser.getRoot()
+		if self.root == None:
+			print('Warning, root was None in parseSVG in SVGReader, so nothing will be done for:')
+			print(fileName)
+			return
+		self.parseSVGByXMLElement(self.root)
 
 	def parseSVGByXMLElement(self, xmlElement):
 		"Parse SVG by xmlElement."
 		self.sliceDictionary = svg_writer.getSliceDictionary(xmlElement)
-		self.yAxisPointingUpward = euclidean.getBooleanFromDictionaryDefault(False, self.sliceDictionary, 'yAxisPointingUpward')
+		self.yAxisPointingUpward = euclidean.getBooleanFromDictionary(False, self.sliceDictionary, 'yAxisPointingUpward')
 		self.processXMLElement(xmlElement)
 		if not self.yAxisPointingUpward:
 			for rotatedLoopLayer in self.rotatedLoopLayers:

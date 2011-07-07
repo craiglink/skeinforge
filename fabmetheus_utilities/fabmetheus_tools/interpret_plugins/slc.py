@@ -6,21 +6,6 @@ An import plugin is a script in the interpret_plugins folder which has the funct
 
 The getCarving function takes the file name of an slc file and returns the carving.
 
-This example gets a triangle mesh for the slc file rotor.slc.  This example is run in a terminal in the folder which contains rotor.slc and slc.py.
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import slc
->>> slc.getCarving()
-0.20000000298, 999999999.0, -999999999.0, [8.72782748851e-17, None
-..
-many more lines of the carving
-..
-
-
 An explanation of the SLC format can be found at:
 http://rapid.lpt.fi/archives/rp-ml-1999/0713.html
 
@@ -43,7 +28,7 @@ import sys
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Nophead <http://hydraraptor.blogspot.com/>\nArt of Illusion <http://www.artofillusion.org/>'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCarving(fileName=''):
@@ -54,11 +39,11 @@ def getCarving(fileName=''):
 
 def getLittleEndianFloatGivenFile( file ):
 	"Get little endian float given a file."
-	return unpack('<f', file.read( 4 ) )[0]
+	return unpack('<f', file.read(4) )[0]
 
 def getLittleEndianUnsignedLongGivenFile( file ):
 	"Get little endian float given a file."
-	return unpack('<L', file.read( 4 ) )[0]
+	return unpack('<L', file.read(4) )[0]
 
 def getPointsFromFile( numPoints, file ):
 	"Process the vertice points for a given boundary."
@@ -93,10 +78,10 @@ class SLCCarving:
 	"An slc carving."
 	def __init__(self):
 		"Add empty lists."
-		self.maximumZ = - 999999999.0
-		self.minimumZ = 999999999.0
+		self.maximumZ = - 987654321.0
+		self.minimumZ = 987654321.0
 		self.layerThickness = None
-		self.rotatedBoundaryLayers = []
+		self.rotatedLoopLayers = []
 	
 	def __repr__(self):
 		"Get the string representation of this carving."
@@ -104,7 +89,7 @@ class SLCCarving:
 
 	def addXML(self, depth, output):
 		"Add xml for this object."
-		xml_simple_writer.addXMLFromObjects(depth, self.rotatedBoundaryLayers, output)
+		xml_simple_writer.addXMLFromObjects(depth, self.rotatedLoopLayers, output)
 
 	def getCarveCornerMaximum(self):
 		"Get the corner maximum of the vertexes."
@@ -116,11 +101,11 @@ class SLCCarving:
 
 	def getCarvedSVG(self):
 		"Get the carved svg text."
-		if len(self.rotatedBoundaryLayers) < 1:
+		if len(self.rotatedLoopLayers) < 1:
 			return ''
 		decimalPlaces = max(0, 2 - int(math.floor(math.log10(self.layerThickness))))
-		self.svgWriter = svg_writer.SVGWriter(True, self, decimalPlaces)
-		return self.svgWriter.getReplacedSVGTemplate(self.fileName, 'basic', self.rotatedBoundaryLayers)
+		self.svgWriter = svg_writer.SVGWriter(True, self.cornerMaximum, self.cornerMinimum, decimalPlaces, self.layerThickness)
+		return self.svgWriter.getReplacedSVGTemplate(self.fileName, 'basic', self.rotatedLoopLayers)
 
 	def getCarveLayerThickness(self):
 		"Get the layer thickness."
@@ -128,7 +113,7 @@ class SLCCarving:
 
 	def getCarveRotatedBoundaryLayers(self):
 		"Get the rotated boundary layers."
-		return self.rotatedBoundaryLayers
+		return self.rotatedLoopLayers
 
 	def getFabmetheusXML(self):
 		"Return the fabmetheus XML."
@@ -145,13 +130,13 @@ class SLCCarving:
 			numContours = getLittleEndianUnsignedLongGivenFile( file )
 			if numContours == 0xFFFFFFFF:
 				return
-			rotatedBoundaryLayer = euclidean.RotatedLoopLayer( minLayer )
-			self.rotatedBoundaryLayers.append( rotatedBoundaryLayer )
+			rotatedLoopLayer = euclidean.RotatedLoopLayer( minLayer )
+			self.rotatedLoopLayers.append( rotatedLoopLayer )
 			for contourIndex in xrange( numContours ):
 				numPoints = getLittleEndianUnsignedLongGivenFile( file )
 				numGaps = getLittleEndianUnsignedLongGivenFile( file )
 				if numPoints > 2:
-					rotatedBoundaryLayer.loops.append( getPointsFromFile( numPoints, file ) )
+					rotatedLoopLayer.loops.append( getPointsFromFile( numPoints, file ) )
 
 	def readFile( self, fileName ):
 		"Read SLC and store the layers."
@@ -162,14 +147,14 @@ class SLCCarving:
 		self.readTableEntry( pslcfile )
 		self.processContourLayers( pslcfile )
 		pslcfile.close()
-		self.cornerMaximum = Vector3(-999999999.0, -999999999.0, self.maximumZ)
-		self.cornerMinimum = Vector3(999999999.0, 999999999.0, self.minimumZ)
-		for rotatedBoundaryLayer in self.rotatedBoundaryLayers:
-			for loop in rotatedBoundaryLayer.loops:
+		self.cornerMaximum = Vector3(-987654321.0, -987654321.0, self.maximumZ)
+		self.cornerMinimum = Vector3(987654321.0, 987654321.0, self.minimumZ)
+		for rotatedLoopLayer in self.rotatedLoopLayers:
+			for loop in rotatedLoopLayer.loops:
 				for point in loop:
-					pointVector3 = Vector3(point.real, point.imag, rotatedBoundaryLayer.z)
-					self.cornerMaximum = euclidean.getPointMaximum(self.cornerMaximum, pointVector3)
-					self.cornerMinimum = euclidean.getPointMinimum(self.cornerMinimum, pointVector3)
+					pointVector3 = Vector3(point.real, point.imag, rotatedLoopLayer.z)
+					self.cornerMaximum.maximize(pointVector3)
+					self.cornerMinimum.minimize(pointVector3)
 		halfLayerThickness = 0.5 * self.layerThickness
 		self.cornerMaximum.z += halfLayerThickness
 		self.cornerMinimum.z -= halfLayerThickness
@@ -184,8 +169,8 @@ class SLCCarving:
 			sampleTableEntry = SampleTableEntry( file )
 			self.layerThickness = sampleTableEntry.layer_thickness
 
-	def setCarveBridgeLayerThickness( self, bridgeLayerThickness ):
-		"Set the bridge layer thickness.  If the infill is not in the direction of the bridge, the bridge layer thickness should be given as None or not set at all."
+	def setCarveInfillInDirectionOfBridge( self, infillInDirectionOfBridge ):
+		'Set the infill in direction of bridge.'
 		pass
 
 	def setCarveLayerThickness( self, layerThickness ):

@@ -3,7 +3,7 @@ This page is in the table of contents.
 Splodge turns the extruder on just before the start of a thread.  This is to give the extrusion a bit anchoring at the beginning.
 
 The splodge manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Splodge
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Splodge
 
 ==Operation==
 The default 'Activate Splodge' checkbox is on.  When it is on, the functions described below will work, when it is off, the functions will not be called.
@@ -44,29 +44,10 @@ Defines the quantity length of extra extrusion at the operating feed rate that w
 ==Examples==
 The following examples splodge the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and splodge.py.
 
-
 > python splodge.py
 This brings up the splodge dialog.
 
-
 > python splodge.py Screw Holder Bottom.stl
-The splodge tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The splodge tool has created the file:
-.. Screw Holder Bottom_splodge.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import splodge
->>> splodge.main()
-This brings up the splodge dialog.
-
-
->>> splodge.writeOutput('Screw Holder Bottom.stl')
 The splodge tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -93,12 +74,12 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, text, splodgeRepository = None ):
 	"Splodge a gcode linear move file or text."
-	return getCraftedTextFromText( archive.getTextIfEmpty( fileName, text ), splodgeRepository )
+	return getCraftedTextFromText( archive.getTextIfEmpty(fileName, text), splodgeRepository )
 
 def getCraftedTextFromText( gcodeText, splodgeRepository = None ):
 	"Splodge a gcode linear move text."
@@ -111,14 +92,12 @@ def getCraftedTextFromText( gcodeText, splodgeRepository = None ):
 	return SplodgeSkein().getCraftedGcode( gcodeText, splodgeRepository )
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return SplodgeRepository()
 
-def writeOutput(fileName=''):
+def writeOutput(fileName, shouldAnalyze=True):
 	"Splodge a gcode linear move file."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName != '':
-		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'splodge')
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'splodge', shouldAnalyze)
 
 
 class SplodgeRepository:
@@ -127,7 +106,7 @@ class SplodgeRepository:
 		"Set the default settings, execute title & settings fileName."
 		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.splodge.html', self )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Splodge', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Splodge')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Splodge')
 		self.activateSplodge = settings.BooleanSetting().getFromValue('Activate Splodge', self, False )
 		settings.LabelSeparator().getFromRepository(self)
 		settings.LabelDisplay().getFromName('- Initial -', self )
@@ -220,7 +199,7 @@ class SplodgeSkein:
 			if firstWord == 'M101':
 				isActive = True
 			if firstWord == 'G1' and isActive:
-				return gcodec.getLocationFromSplitLine(self.oldLocation, splitLine).dropAxis(2)
+				return gcodec.getLocationFromSplitLine(self.oldLocation, splitLine).dropAxis()
 		return None
 
 	def getOperatingSplodgeLine( self, line, location ):
@@ -240,7 +219,7 @@ class SplodgeSkein:
 
 	def getSplodgeLineGivenDistance( self, feedRateMinute, line, liftOverExtraThickness, location, startupDistance ):
 		"Add the splodge line."
-		locationComplex = location.dropAxis(2)
+		locationComplex = location.dropAxis()
 		relativeStartComplex = None
 		nextLocationComplex = self.getNextActiveLocationComplex()
 		if nextLocationComplex != None:
@@ -249,7 +228,7 @@ class SplodgeSkein:
 		if relativeStartComplex == None:
 			relativeStartComplex = complex( 19.9, 9.9 )
 			if self.oldLocation != None:
-				oldLocationComplex = self.oldLocation.dropAxis(2)
+				oldLocationComplex = self.oldLocation.dropAxis()
 				if oldLocationComplex != locationComplex:
 					relativeStartComplex = oldLocationComplex - locationComplex
 		relativeStartComplex *= startupDistance / abs( relativeStartComplex )
@@ -299,7 +278,7 @@ class SplodgeSkein:
 			firstWord = gcodec.getFirstWord(splitLine)
 			self.distanceFeedRate.parseSplitLine(firstWord, splitLine)
 			if firstWord == '(</extruderInitialization>)':
-				self.addLineUnlessIdenticalReactivate('(<procedureDone> splodge </procedureDone>)')
+				self.addLineUnlessIdenticalReactivate('(<procedureName> splodge </procedureName>)')
 				return
 			elif firstWord == '(<layerThickness>':
 				self.layerThickness = float(splitLine[1])

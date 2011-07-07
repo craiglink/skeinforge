@@ -17,14 +17,13 @@ from fabmetheus_utilities import svg_reader
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Nophead <http://hydraraptor.blogspot.com/>\nArt of Illusion <http://www.artofillusion.org/>'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getGeometryOutput(derivation, xmlElement):
 	"Get vector3 vertexes from attribute dictionary."
 	if derivation == None:
-		derivation = SVGDerivation()
-		derivation.setToXMLElement(xmlElement)
+		derivation = SVGDerivation(xmlElement)
 	return getGeometryOutputBySVGReader(derivation.svgReader, xmlElement)
 
 def getGeometryOutputByArguments(arguments, xmlElement):
@@ -44,23 +43,22 @@ def getGeometryOutputBySVGReader(svgReader, xmlElement):
 			geometryOutput += lineation.getGeometryOutputByManipulation(sideLoop, xmlElement)
 	return geometryOutput
 
+def getNewDerivation(xmlElement):
+	'Get new derivation.'
+	return SVGDerivation(xmlElement)
+
 def processXMLElement(xmlElement):
 	"Process the xml element."
-	derivation = SVGDerivation()
-	derivation.setToXMLElement(xmlElement)
-	path.convertProcessXMLElementRenameByPaths(getGeometryOutput(derivation, xmlElement), xmlElement)
+	path.convertXMLElement(getGeometryOutput(None, xmlElement), xmlElement)
 
 
 class SVGDerivation:
 	"Class to hold svg variables."
-	def __init__(self):
+	def __init__(self, xmlElement):
 		'Set defaults.'
 		self.svgReader = svg_reader.SVGReader()
+		self.svgReader.parseSVGByXMLElement(xmlElement)
 
 	def __repr__(self):
 		"Get the string representation of this SVGDerivation."
 		return str(self.__dict__)
-
-	def setToXMLElement(self, xmlElement):
-		"Set to the xmlElement."
-		self.svgReader.parseSVGByXMLElement(xmlElement)
