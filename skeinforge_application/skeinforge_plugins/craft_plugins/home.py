@@ -148,6 +148,8 @@ class HomeSkein:
 			return
 		self.shouldHome = False
 		if self.oldLocation == None:
+			self.addHopUp( location )
+			self.distanceFeedRate.addLinesSetAbsoluteDistanceMode( self.homingLines )
 			return
 		if self.extruderActive:
 			self.distanceFeedRate.addLine('M103')
