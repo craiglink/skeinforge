@@ -21,7 +21,7 @@
 <a href="fabmetheus_utilities.euclidean.html">fabmetheus_utilities.euclidean</a><br>
 </td><td width="25%" valign=top><a href="fabmetheus_utilities.geometry.geometry_utilities.evaluate.html">fabmetheus_utilities.geometry.geometry_utilities.evaluate</a><br>
 <a href="math.html">math</a><br>
-</td><td width="25%" valign=top><a href="fabmetheus_utilities.geometry.manipulation_evaluator.matrix.html">fabmetheus_utilities.geometry.manipulation_evaluator.matrix</a><br>
+</td><td width="25%" valign=top><a href="fabmetheus_utilities.geometry.geometry_utilities.matrix.html">fabmetheus_utilities.geometry.geometry_utilities.matrix</a><br>
 <a href="fabmetheus_utilities.geometry.geometry_tools.path.html">fabmetheus_utilities.geometry.geometry_tools.path</a><br>
 </td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -45,11 +45,9 @@
 <td colspan=2><tt>Class&nbsp;to&nbsp;hold&nbsp;lineation&nbsp;variables.<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%">Methods defined here:<br>
-<dl><dt><a name="LineationDerivation-__init__"><strong>__init__</strong></a>(self)</dt><dd><tt>Set&nbsp;defaults.</tt></dd></dl>
+<dl><dt><a name="LineationDerivation-__init__"><strong>__init__</strong></a>(self, xmlElement)</dt><dd><tt>Set&nbsp;defaults.</tt></dd></dl>
 
 <dl><dt><a name="LineationDerivation-__repr__"><strong>__repr__</strong></a>(self)</dt><dd><tt>Get&nbsp;the&nbsp;string&nbsp;representation&nbsp;of&nbsp;this&nbsp;<a href="#LineationDerivation">LineationDerivation</a>.</tt></dd></dl>
-
-<dl><dt><a name="LineationDerivation-setToXMLElement"><strong>setToXMLElement</strong></a>(self, xmlElement)</dt><dd><tt>Set&nbsp;to&nbsp;the&nbsp;xmlElement.</tt></dd></dl>
 
 </td></tr></table> <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -103,22 +101,20 @@
  <dl><dt><a name="-getFloatByPrefixSide"><strong>getFloatByPrefixSide</strong></a>(prefix, side, xmlElement)</dt><dd><tt>Get&nbsp;float&nbsp;by&nbsp;prefix&nbsp;and&nbsp;side.</tt></dd></dl>
  <dl><dt><a name="-getGeometryOutput"><strong>getGeometryOutput</strong></a>(derivation, xmlElement)</dt><dd><tt>Get&nbsp;geometry&nbsp;output&nbsp;from&nbsp;paths.</tt></dd></dl>
  <dl><dt><a name="-getGeometryOutputByArguments"><strong>getGeometryOutputByArguments</strong></a>(arguments, xmlElement)</dt><dd><tt>Get&nbsp;vector3&nbsp;vertexes&nbsp;from&nbsp;attribute&nbsp;dictionary&nbsp;by&nbsp;arguments.</tt></dd></dl>
- <dl><dt><a name="-getGeometryOutputByFunction"><strong>getGeometryOutputByFunction</strong></a>(manipulationFunction, xmlElement)</dt><dd><tt>Get&nbsp;geometry&nbsp;output&nbsp;by&nbsp;manipulationFunction.</tt></dd></dl>
  <dl><dt><a name="-getGeometryOutputByLoop"><strong>getGeometryOutputByLoop</strong></a>(sideLoop, xmlElement)</dt><dd><tt>Get&nbsp;geometry&nbsp;output&nbsp;by&nbsp;side&nbsp;loop.</tt></dd></dl>
- <dl><dt><a name="-getGeometryOutputByLoopFunction"><strong>getGeometryOutputByLoopFunction</strong></a>(manipulationFunction, sideLoop, xmlElement)</dt><dd><tt>Get&nbsp;geometry&nbsp;output&nbsp;by&nbsp;side&nbsp;loop.</tt></dd></dl>
  <dl><dt><a name="-getGeometryOutputByManipulation"><strong>getGeometryOutputByManipulation</strong></a>(sideLoop, xmlElement)</dt><dd><tt>Get&nbsp;geometry&nbsp;output&nbsp;by&nbsp;manipulation.</tt></dd></dl>
  <dl><dt><a name="-getMinimumRadius"><strong>getMinimumRadius</strong></a>(beginComplexSegmentLength, endComplexSegmentLength, radius)</dt><dd><tt>Get&nbsp;minimum&nbsp;radius.</tt></dd></dl>
+ <dl><dt><a name="-getNewDerivation"><strong>getNewDerivation</strong></a>(xmlElement)</dt><dd><tt>Get&nbsp;new&nbsp;derivation.</tt></dd></dl>
  <dl><dt><a name="-getNumberOfBezierPoints"><strong>getNumberOfBezierPoints</strong></a>(begin, end, xmlElement)</dt><dd><tt>Get&nbsp;the&nbsp;numberOfBezierPoints.</tt></dd></dl>
  <dl><dt><a name="-getPackedGeometryOutputByLoop"><strong>getPackedGeometryOutputByLoop</strong></a>(sideLoop, xmlElement)</dt><dd><tt>Get&nbsp;packed&nbsp;geometry&nbsp;output&nbsp;by&nbsp;side&nbsp;loop.</tt></dd></dl>
  <dl><dt><a name="-getRadiusAverage"><strong>getRadiusAverage</strong></a>(radiusComplex)</dt><dd><tt>Get&nbsp;average&nbsp;radius&nbsp;from&nbsp;radiusComplex.</tt></dd></dl>
  <dl><dt><a name="-getRadiusByPrefix"><strong>getRadiusByPrefix</strong></a>(prefix, sideLength, xmlElement)</dt><dd><tt>Get&nbsp;radius&nbsp;by&nbsp;prefix.</tt></dd></dl>
  <dl><dt><a name="-getRadiusComplex"><strong>getRadiusComplex</strong></a>(radius, xmlElement)</dt><dd><tt>Get&nbsp;radius&nbsp;complex&nbsp;for&nbsp;xmlElement.</tt></dd></dl>
  <dl><dt><a name="-getStrokeRadiusByPrefix"><strong>getStrokeRadiusByPrefix</strong></a>(prefix, xmlElement)</dt><dd><tt>Get&nbsp;strokeRadius&nbsp;by&nbsp;prefix.</tt></dd></dl>
- <dl><dt><a name="-getUnpackedLoops"><strong>getUnpackedLoops</strong></a>(loops)</dt><dd><tt>Get&nbsp;unpacked&nbsp;loops.</tt></dd></dl>
- <dl><dt><a name="-getWrappedInteger"><strong>getWrappedInteger</strong></a>(integer, modulo)</dt><dd><tt>Get&nbsp;wrapped&nbsp;integer.</tt></dd></dl>
+ <dl><dt><a name="-processTargetByFunction"><strong>processTargetByFunction</strong></a>(manipulationFunction, target)</dt><dd><tt>Process&nbsp;the&nbsp;target&nbsp;by&nbsp;the&nbsp;manipulationFunction.</tt></dd></dl>
  <dl><dt><a name="-processXMLElement"><strong>processXMLElement</strong></a>(xmlElement)</dt><dd><tt>Process&nbsp;the&nbsp;xml&nbsp;element.</tt></dd></dl>
- <dl><dt><a name="-processXMLElementByFunction"><strong>processXMLElementByFunction</strong></a>(manipulationFunction, xmlElement)</dt><dd><tt>Process&nbsp;the&nbsp;xml&nbsp;element&nbsp;by&nbsp;manipulationFunction.</tt></dd></dl>
- <dl><dt><a name="-processXMLElementByGeometry"><strong>processXMLElementByGeometry</strong></a>(geometryOutput, xmlElement)</dt><dd><tt>Process&nbsp;the&nbsp;xml&nbsp;element&nbsp;by&nbsp;geometryOutput.</tt></dd></dl>
+ <dl><dt><a name="-processXMLElementByFunction"><strong>processXMLElementByFunction</strong></a>(manipulationFunction, xmlElement)</dt><dd><tt>Process&nbsp;the&nbsp;xml&nbsp;element&nbsp;by&nbsp;the&nbsp;manipulationFunction.</tt></dd></dl>
+ <dl><dt><a name="-removeChildrenFromElementObject"><strong>removeChildrenFromElementObject</strong></a>(xmlElement)</dt><dd><tt>Process&nbsp;the&nbsp;xml&nbsp;element&nbsp;by&nbsp;manipulationFunction.</tt></dd></dl>
  <dl><dt><a name="-setClosedAttribute"><strong>setClosedAttribute</strong></a>(revolutions, xmlElement)</dt><dd><tt>Set&nbsp;the&nbsp;closed&nbsp;attribute&nbsp;of&nbsp;the&nbsp;xmlElement.</tt></dd></dl>
 </td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -130,7 +126,7 @@
 <td width="100%"><strong>__author__</strong> = 'Enrique Perez (perez_enrique@yahoo.com)'<br>
 <strong>__credits__</strong> = 'Art of Illusion &lt;http://www.artofillusion.org/&gt;'<br>
 <strong>__date__</strong> = '$Date: 2008/02/05 $'<br>
-<strong>__license__</strong> = 'GPL 3.0'<br>
+<strong>__license__</strong> = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'<br>
 <strong>absolute_import</strong> = _Feature((2, 5, 0, 'alpha', 1), (2, 7, 0, 'alpha', 0), 16384)</td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#7799ee">

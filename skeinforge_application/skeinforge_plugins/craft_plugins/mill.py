@@ -41,10 +41,8 @@ Defines the ratio of the mill line width over the perimeter width.  If the ratio
 ==Examples==
 The following examples mill the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and mill.py.
 
-
 > python mill.py
 This brings up the mill dialog.
-
 
 > python mill.py Screw Holder Bottom.stl
 The mill tool is parsing the file:
@@ -53,25 +51,6 @@ Screw Holder Bottom.stl
 The mill tool has created the file:
 Screw Holder Bottom_mill.gcode
 
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import mill
->>> mill.main()
-This brings up the mill dialog.
-
-
->>> mill.writeOutput('Screw Holder Bottom.stl')
-Screw Holder Bottom.stl
-The mill tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The mill tool has created the file:
-Screw Holder Bottom_mill.gcode
-
-
 """
 
 from __future__ import absolute_import
@@ -79,7 +58,7 @@ from __future__ import absolute_import
 import __init__
 
 from fabmetheus_utilities.fabmetheus_tools import fabmetheus_interpret
-from fabmetheus_utilities.geometry.solids import trianglemesh
+from fabmetheus_utilities.geometry.solids import triangle_mesh
 from fabmetheus_utilities.vector3 import Vector3
 from fabmetheus_utilities import archive
 from fabmetheus_utilities import euclidean
@@ -96,15 +75,15 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, gcodeText = '', repository=None):
-	"Mill the file or gcodeText."
+	'Mill the file or gcodeText.'
 	return getCraftedTextFromText( archive.getTextIfEmpty(fileName, gcodeText), repository )
 
 def getCraftedTextFromText(gcodeText, repository=None):
-	"Mill a gcode linear move gcodeText."
+	'Mill a gcode linear move gcodeText.'
 	if gcodec.isProcedureDoneOrFileIsEmpty( gcodeText, 'mill'):
 		return gcodeText
 	if repository == None:
@@ -114,59 +93,59 @@ def getCraftedTextFromText(gcodeText, repository=None):
 	return MillSkein().getCraftedGcode(gcodeText, repository)
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return MillRepository()
 
-def getPointsFromSegmentTable( segmentTable ):
-	"Get the points from the segment table."
+def getPointsFromSegmentTable(segmentTable):
+	'Get the points from the segment table.'
 	points = []
-	endpoints = euclidean.getEndpointsFromSegmentTable( segmentTable )
-	for endpoint in endpoints:
-		points.append( endpoint.point )
+	segmentTableKeys = segmentTable.keys()
+	segmentTableKeys.sort()
+	for segmentTableKey in segmentTableKeys:
+		for segment in segmentTable[segmentTableKey]:
+			for endpoint in segment:
+				points.append(endpoint.point)
 	return points
 
 def isPointOfTableInLoop( loop, pointTable ):
-	"Determine if a point in the point table is in the loop."
+	'Determine if a point in the point table is in the loop.'
 	for point in loop:
 		if point in pointTable:
 			return True
 	return False
 
-def writeOutput(fileName=''):
-	"Mill a gcode linear move file."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName == '':
-		return
-	skeinforge_craft.writeChainTextWithNounMessage( fileName, 'mill')
+def writeOutput(fileName, shouldAnalyze=True):
+	'Mill a gcode linear move file.'
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'mill', shouldAnalyze)
 
 
 class Average:
-	"A class to hold values and get the average."
+	'A class to hold values and get the average.'
 	def __init__(self):
 		self.reset()
 
 	def addValue( self, value ):
-		"Add a value to the total and the number of values."
+		'Add a value to the total and the number of values.'
 		self.numberOfValues += 1
 		self.total += value
 
 	def getAverage(self):
-		"Get the average."
+		'Get the average.'
 		if self.numberOfValues == 0:
 			print('should never happen, self.numberOfValues in Average is zero')
 			return 0.0
 		return self.total / float( self.numberOfValues )
 
 	def reset(self):
-		"Set the number of values and the total to the default."
+		'Set the number of values and the total to the default.'
 		self.numberOfValues = 0
 		self.total = 0.0
 
 
 class MillRepository:
-	"A class to handle the mill settings."
+	'A class to handle the mill settings.'
 	def __init__(self):
-		"Set the default settings, execute title & settings fileName."
+		'Set the default settings, execute title & settings fileName.'
 		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.mill.html', self )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Mill', self, '')
 		self.activateMill = settings.BooleanSetting().getFromValue('Activate Mill', self, True )
@@ -181,7 +160,7 @@ class MillRepository:
 		self.executeTitle = 'Mill'
 
 	def execute(self):
-		"Mill button has been clicked."
+		'Mill button has been clicked.'
 		fileNames = skeinforge_polyfile.getFileOrDirectoryTypesUnmodifiedGcode(self.fileNameInput.value, fabmetheus_interpret.getImportPluginFileNames(), self.fileNameInput.wasCancelled)
 		for fileName in fileNames:
 			writeOutput(fileName)
@@ -189,7 +168,7 @@ class MillRepository:
 
 
 class MillSkein:
-	"A class to mill a skein of extrusions."
+	'A class to mill a skein of extrusions.'
 	def __init__(self):
 		self.aroundPixelTable = {}
 		self.average = Average()
@@ -203,27 +182,26 @@ class MillSkein:
 		self.oldLocation = None
 		self.perimeterWidth = 0.6
 
-	def addGcodeFromLoops( self, loops, z ):
-		"Add gcode from loops."
+	def addGcodeFromLoops(self, loops, z):
+		'Add gcode from loops.'
 		if self.oldLocation == None:
 			self.oldLocation = Vector3()
 		self.oldLocation.z = z
 		for loop in loops:
 			self.distanceFeedRate.addGcodeFromThreadZ(loop, z)
-			euclidean.addToThreadsFromLoop( self.halfPerimeterWidth, 'loop', loop, self.oldLocation, self )
+			euclidean.addToThreadsFromLoop(self.halfPerimeterWidth, 'loop', loop, self.oldLocation, self)
 
 	def addGcodeFromThreadZ( self, thread, z ):
-		"Add a thread to the output."
+		'Add a thread to the output.'
 		self.distanceFeedRate.addGcodeFromThreadZ( thread, z )
 
 	def addMillThreads(self):
-		"Add the mill htreads to the skein."
-		boundaryLayer = self.boundaryLayers[ self.layerIndex ]
+		'Add the mill threads to the skein.'
+		boundaryLayer = self.boundaryLayers[self.layerIndex]
 		endpoints = euclidean.getEndpointsFromSegmentTable( boundaryLayer.segmentTable )
-		if len( endpoints ) < 1:
+		if len(endpoints) < 1:
 			return
-		paths = euclidean.getPathsFromEndpoints( endpoints, self.millWidth, self.aroundPixelTable, self.aroundWidth )
-		paths = euclidean.getConnectedPaths( paths, self.aroundPixelTable, self.aroundWidth ) # this is probably unnecesary
+		paths = euclidean.getPathsFromEndpoints(endpoints, 5.0 * self.millWidth, self.aroundPixelTable, self.aroundWidth)
 		averageZ = self.average.getAverage()
 		if self.repository.addInnerLoops.value:
 			self.addGcodeFromLoops( boundaryLayer.innerLoops, averageZ )
@@ -234,27 +212,27 @@ class MillSkein:
 			self.distanceFeedRate.addGcodeFromThreadZ( simplifiedPath, averageZ )
 
 	def addSegmentTableLoops( self, boundaryLayerIndex ):
-		"Add the segment tables and loops to the boundary."
-		boundaryLayer = self.boundaryLayers[ boundaryLayerIndex ]
-		euclidean.subtractXIntersectionsTable( boundaryLayer.outerHorizontalTable, boundaryLayer.innerHorizontalTable )
-		euclidean.subtractXIntersectionsTable( boundaryLayer.outerVerticalTable, boundaryLayer.innerVerticalTable )
-		boundaryLayer.horizontalSegmentTable = self.getHorizontalSegmentTableForXIntersectionsTable( boundaryLayer.outerHorizontalTable )
-		boundaryLayer.verticalSegmentTable = self.getVerticalSegmentTableForXIntersectionsTable( boundaryLayer.outerVerticalTable )
-		innerHorizontalSegmentTable = self.getHorizontalSegmentTableForXIntersectionsTable( boundaryLayer.innerHorizontalTable )
-		innerVerticalSegmentTable = self.getVerticalSegmentTableForXIntersectionsTable( boundaryLayer.innerVerticalTable )
-		betweenPoints = getPointsFromSegmentTable( boundaryLayer.horizontalSegmentTable )
-		betweenPoints += getPointsFromSegmentTable( boundaryLayer.verticalSegmentTable )
-		innerPoints = getPointsFromSegmentTable( innerHorizontalSegmentTable )
-		innerPoints += getPointsFromSegmentTable( innerVerticalSegmentTable )
+		'Add the segment tables and loops to the boundary.'
+		boundaryLayer = self.boundaryLayers[boundaryLayerIndex]
+		euclidean.subtractXIntersectionsTable(boundaryLayer.outerHorizontalTable, boundaryLayer.innerHorizontalTable)
+		euclidean.subtractXIntersectionsTable(boundaryLayer.outerVerticalTable, boundaryLayer.innerVerticalTable)
+		boundaryLayer.horizontalSegmentTable = self.getHorizontalSegmentTableForXIntersectionsTable(
+			boundaryLayer.outerHorizontalTable)
+		boundaryLayer.verticalSegmentTable = self.getVerticalSegmentTableForXIntersectionsTable(
+			boundaryLayer.outerVerticalTable)
+		betweenPoints = getPointsFromSegmentTable(boundaryLayer.horizontalSegmentTable)
+		betweenPoints += getPointsFromSegmentTable(boundaryLayer.verticalSegmentTable)
+		innerPoints = euclidean.getPointsByHorizontalDictionary(self.millWidth, boundaryLayer.innerHorizontalTable)
+		innerPoints += euclidean.getPointsByVerticalDictionary(self.millWidth, boundaryLayer.innerVerticalTable)
 		innerPointTable = {}
 		for innerPoint in innerPoints:
-			innerPointTable[ innerPoint ] = None
+			innerPointTable[innerPoint] = None
 		boundaryLayer.innerLoops = []
 		boundaryLayer.outerLoops = []
 		millRadius = 0.75 * self.millWidth
-		loops = trianglemesh.getDescendingAreaLoops(betweenPoints, betweenPoints, millRadius)
+		loops = triangle_mesh.getDescendingAreaOrientedLoops(betweenPoints, betweenPoints, millRadius)
 		for loop in loops:
-			if isPointOfTableInLoop( loop, innerPointTable ):
+			if isPointOfTableInLoop(loop, innerPointTable):
 				boundaryLayer.innerLoops.append(loop)
 			else:
 				boundaryLayer.outerLoops.append(loop)
@@ -264,7 +242,7 @@ class MillSkein:
 			boundaryLayer.segmentTable = boundaryLayer.horizontalSegmentTable
 
 	def getCraftedGcode(self, gcodeText, repository):
-		"Parse gcode text and store the mill gcode."
+		'Parse gcode text and store the mill gcode.'
 		self.repository = repository
 		self.lines = archive.getTextLines(gcodeText)
 		self.parseInitialization()
@@ -274,7 +252,7 @@ class MillSkein:
 		return self.distanceFeedRate.output.getvalue()
 
 	def getHorizontalSegmentTableForXIntersectionsTable( self, xIntersectionsTable ):
-		"Get the horizontal segment table from the xIntersectionsTable."
+		'Get the horizontal segment table from the xIntersectionsTable.'
 		horizontalSegmentTable = {}
 		xIntersectionsTableKeys = xIntersectionsTable.keys()
 		xIntersectionsTableKeys.sort()
@@ -284,14 +262,14 @@ class MillSkein:
 			horizontalSegmentTable[ xIntersectionsTableKey ] = segments
 		return horizontalSegmentTable
 
-	def getHorizontalXIntersectionsTable( self, loops ):
-		"Get the horizontal x intersections table from the loops."
+	def getHorizontalXIntersectionsTable(self, loops):
+		'Get the horizontal x intersections table from the loops.'
 		horizontalXIntersectionsTable = {}
-		euclidean.addXIntersectionsFromLoopsForTable( loops, horizontalXIntersectionsTable, self.millWidth )
+		euclidean.addXIntersectionsFromLoopsForTable(loops, horizontalXIntersectionsTable, self.millWidth)
 		return horizontalXIntersectionsTable
 
 	def getVerticalSegmentTableForXIntersectionsTable( self, xIntersectionsTable ):
-		"Get the vertical segment table from the xIntersectionsTable which has the x and y swapped."
+		'Get the vertical segment table from the xIntersectionsTable which has the x and y swapped.'
 		verticalSegmentTable = {}
 		xIntersectionsTableKeys = xIntersectionsTable.keys()
 		xIntersectionsTableKeys.sort()
@@ -305,7 +283,7 @@ class MillSkein:
 		return verticalSegmentTable
 
 	def parseBoundaries(self):
-		"Parse the boundaries and add them to the boundary layers."
+		'Parse the boundaries and add them to the boundary layers.'
 		boundaryLoop = None
 		boundaryLayer = None
 		for line in self.lines[self.lineIndex :]:
@@ -317,12 +295,12 @@ class MillSkein:
 				location = gcodec.getLocationFromSplitLine(None, splitLine)
 				if boundaryLoop == None:
 					boundaryLoop = []
-					boundaryLayer.loops.append( boundaryLoop )
-				boundaryLoop.append( location.dropAxis(2) )
+					boundaryLayer.loops.append(boundaryLoop)
+				boundaryLoop.append(location.dropAxis())
 			elif firstWord == '(<layer>':
 				boundaryLayer = euclidean.LoopLayer(float(splitLine[1]))
-				self.boundaryLayers.append( boundaryLayer )
-		if len( self.boundaryLayers ) < 2:
+				self.boundaryLayers.append(boundaryLayer)
+		if len(self.boundaryLayers) < 2:
 			return
 		for boundaryLayer in self.boundaryLayers:
 			boundaryLayer.innerOutsetLoops = intercircle.getInsetSeparateLoopsFromLoops( - self.loopInnerOutset, boundaryLayer.loops )
@@ -331,18 +309,18 @@ class MillSkein:
 			boundaryLayer.outerHorizontalTable = self.getHorizontalXIntersectionsTable( boundaryLayer.outerOutsetLoops )
 			boundaryLayer.innerVerticalTable = self.getHorizontalXIntersectionsTable( euclidean.getDiagonalFlippedLoops( boundaryLayer.innerOutsetLoops ) )
 			boundaryLayer.outerVerticalTable = self.getHorizontalXIntersectionsTable( euclidean.getDiagonalFlippedLoops( boundaryLayer.outerOutsetLoops ) )
-		for boundaryLayerIndex in xrange( len( self.boundaryLayers ) - 2, - 1, - 1 ):
+		for boundaryLayerIndex in xrange( len(self.boundaryLayers) - 2, - 1, - 1 ):
 			boundaryLayer = self.boundaryLayers[ boundaryLayerIndex ]
 			boundaryLayerBelow = self.boundaryLayers[ boundaryLayerIndex + 1 ]
 			euclidean.joinXIntersectionsTables( boundaryLayerBelow.outerHorizontalTable, boundaryLayer.outerHorizontalTable )
 			euclidean.joinXIntersectionsTables( boundaryLayerBelow.outerVerticalTable, boundaryLayer.outerVerticalTable )
-		for boundaryLayerIndex in xrange( 1, len( self.boundaryLayers ) ):
+		for boundaryLayerIndex in xrange( 1, len(self.boundaryLayers) ):
 			boundaryLayer = self.boundaryLayers[ boundaryLayerIndex ]
 			boundaryLayerAbove = self.boundaryLayers[ boundaryLayerIndex - 1 ]
 			euclidean.joinXIntersectionsTables( boundaryLayerAbove.innerHorizontalTable, boundaryLayer.innerHorizontalTable )
 			euclidean.joinXIntersectionsTables( boundaryLayerAbove.innerVerticalTable, boundaryLayer.innerVerticalTable )
-		for boundaryLayerIndex in xrange( len( self.boundaryLayers ) ):
-			self.addSegmentTableLoops( boundaryLayerIndex )
+		for boundaryLayerIndex in xrange( len(self.boundaryLayers) ):
+			self.addSegmentTableLoops(boundaryLayerIndex)
 
 	def parseInitialization(self):
 		'Parse gcode initialization and store the parameters.'
@@ -352,7 +330,7 @@ class MillSkein:
 			firstWord = gcodec.getFirstWord(splitLine)
 			self.distanceFeedRate.parseSplitLine(firstWord, splitLine)
 			if firstWord == '(</extruderInitialization>)':
-				self.distanceFeedRate.addLine('(<procedureDone> mill </procedureDone>)')
+				self.distanceFeedRate.addLine('(<procedureName> mill </procedureName>)')
 				return
 			elif firstWord == '(<perimeterWidth>':
 				self.perimeterWidth = float(splitLine[1])
@@ -364,7 +342,7 @@ class MillSkein:
 			self.distanceFeedRate.addLine(line)
 
 	def parseLine(self, line):
-		"Parse a gcode line and add it to the mill skein."
+		'Parse a gcode line and add it to the mill skein.'
 		splitLine = gcodec.getSplitLineBeforeBracketSemicolon(line)
 		if len(splitLine) < 1:
 			return
@@ -374,7 +352,7 @@ class MillSkein:
 			if self.isExtruderActive:
 				self.average.addValue(location.z)
 				if self.oldLocation != None:
-					euclidean.addValueSegmentToPixelTable( self.oldLocation.dropAxis(2), location.dropAxis(2), self.aroundPixelTable, None, self.aroundWidth )
+					euclidean.addValueSegmentToPixelTable( self.oldLocation.dropAxis(), location.dropAxis(), self.aroundPixelTable, None, self.aroundWidth )
 			self.oldLocation = location
 		elif firstWord == 'M101':
 			self.isExtruderActive = True
@@ -385,18 +363,18 @@ class MillSkein:
 			self.aroundPixelTable = {}
 			self.average.reset()
 		elif firstWord == '(</layer>)':
-			if len( self.boundaryLayers ) > self.layerIndex:
+			if len(self.boundaryLayers) > self.layerIndex:
 				self.addMillThreads()
 			self.layerIndex += 1
 		self.distanceFeedRate.addLine(line)
 
 
 def main():
-	"Display the mill dialog."
+	'Display the mill dialog.'
 	if len(sys.argv) > 1:
 		writeOutput(' '.join(sys.argv[1 :]))
 	else:
 		settings.startMainLoopFromConstructor( getNewRepository() )
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 	main()

@@ -3,7 +3,7 @@ This page is in the table of contents.
 Hop is a script to raise the extruder when it is not extruding.
 
 The hop manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Hop
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Hop
 
 ==Operation==
 The default 'Activate Hop' checkbox is off.  It is off because Vik and Nophead found better results without hopping.  When it is on, the functions described below will work, when it is off, the functions will not be called.
@@ -22,29 +22,10 @@ Defines the minimum angle that the path of the extruder will be raised.  An angl
 ==Examples==
 The following examples hop the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and hop.py.
 
-
 > python hop.py
 This brings up the hop dialog.
 
-
 > python hop.py Screw Holder Bottom.stl
-The hop tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The hop tool has created the file:
-.. Screw Holder Bottom_hop.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import hop
->>> hop.main()
-This brings up the hop dialog.
-
-
->>> hop.writeOutput('Screw Holder Bottom.stl')
 The hop tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -71,12 +52,12 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, text, hopRepository = None ):
 	"Hop a gcode linear move text."
-	return getCraftedTextFromText( archive.getTextIfEmpty( fileName, text ), hopRepository )
+	return getCraftedTextFromText( archive.getTextIfEmpty(fileName, text), hopRepository )
 
 def getCraftedTextFromText( gcodeText, hopRepository = None ):
 	"Hop a gcode linear move text."
@@ -89,14 +70,12 @@ def getCraftedTextFromText( gcodeText, hopRepository = None ):
 	return HopSkein().getCraftedGcode( gcodeText, hopRepository )
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return HopRepository()
 
-def writeOutput(fileName=''):
-	"Hop a gcode linear move file.  Chain hop the gcode if it is not already hopped. If no fileName is specified, hop the first unmodified gcode file in this folder."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName != '':
-		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'hop')
+def writeOutput(fileName, shouldAnalyze=True):
+	"Hop a gcode linear move file.  Chain hop the gcode if it is not already hopped."
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'hop', shouldAnalyze)
 
 
 class HopRepository:
@@ -105,7 +84,7 @@ class HopRepository:
 		"Set the default settings, execute title & settings fileName."
 		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.hop.html', self )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Hop', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Hop')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Hop')
 		self.activateHop = settings.BooleanSetting().getFromValue('Activate Hop', self, False )
 		self.hopOverLayerThickness = settings.FloatSpin().getFromValue( 0.5, 'Hop Over Layer Thickness (ratio):', self, 1.5, 1.0 )
 		self.minimumHopAngle = settings.FloatSpin().getFromValue( 20.0, 'Minimum Hop Angle (degrees):', self, 60.0, 30.0 )
@@ -121,6 +100,8 @@ class HopRepository:
 class HopSkein:
 	"A class to hop a skein of extrusions."
 	def __init__(self):
+		'Initialize'
+		self.isAlteration = False
 		self.distanceFeedRate = gcodec.DistanceFeedRate()
 		self.extruderActive = False
 		self.feedRateMinute = 961.0
@@ -145,16 +126,16 @@ class HopSkein:
 		"Get hopped gcode line."
 		splitLine = gcodec.getSplitLineBeforeBracketSemicolon(line)
 		self.feedRateMinute = gcodec.getFeedRateMinute( self.feedRateMinute, splitLine )
-		if self.extruderActive:
+		if self.extruderActive or self.isAlteration:
 			return line
 		location = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine)
 		highestZ = location.z
 		if self.oldLocation != None:
 			highestZ = max( highestZ, self.oldLocation.z )
 		highestZHop = highestZ + self.hopHeight
-		locationComplex = location.dropAxis(2)
+		locationComplex = location.dropAxis()
 		if self.justDeactivated:
-			oldLocationComplex = self.oldLocation.dropAxis(2)
+			oldLocationComplex = self.oldLocation.dropAxis()
 			distance = abs( locationComplex - oldLocationComplex )
 			if distance < self.minimumDistance:
 				if self.isNextTravel():
@@ -199,7 +180,7 @@ class HopSkein:
 				self.hopDistance = self.hopHeight / self.minimumSlope
 				self.minimumDistance = 0.5 * layerThickness
 			elif firstWord == '(</extruderInitialization>)':
-				self.distanceFeedRate.addLine('(<procedureDone> hop </procedureDone>)')
+				self.distanceFeedRate.addLine('(<procedureName> hop </procedureName>)')
 				return
 			self.distanceFeedRate.addLine(line)
 
@@ -218,6 +199,10 @@ class HopSkein:
 		elif firstWord == 'M103':
 			self.extruderActive = False
 			self.justDeactivated = True
+		elif firstWord == '(<alteration>)':
+			self.isAlteration = True
+		elif firstWord == '(</alteration>)':
+			self.isAlteration = False
 		self.distanceFeedRate.addLine(line)
 
 

@@ -3,7 +3,7 @@ This page is in the table of contents.
 Comb is a script to comb the extrusion hair of a gcode file.
 
 The comb manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Comb
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Comb
 
 Comb bends the extruder travel paths around holes in the slices, to avoid stringers.  It moves the extruder to the inside of perimeters before turning the extruder on so any start up ooze will be inside the shape.
 
@@ -15,32 +15,12 @@ The default 'Activate Comb' checkbox is off.  When it is on, the functions descr
 Placeholder.
 
 ==Examples==
-
 The following examples comb the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and comb.py.
-
 
 > python comb.py
 This brings up the comb dialog.
 
-
 > python comb.py Screw Holder Bottom.stl
-The comb tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The comb tool has created the file:
-.. Screw Holder Bottom_comb.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import comb
->>> comb.main()
-This brings up the comb dialog.
-
-
->>> comb.writeOutput('Screw Holder Bottom.stl')
 The comb tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -73,12 +53,12 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, text, combRepository = None ):
 	"Comb a gcode linear move text."
-	return getCraftedTextFromText( archive.getTextIfEmpty( fileName, text ), combRepository )
+	return getCraftedTextFromText( archive.getTextIfEmpty(fileName, text), combRepository )
 
 def getCraftedTextFromText( gcodeText, combRepository = None ):
 	"Comb a gcode linear move text."
@@ -114,7 +94,7 @@ def getInsideness(path, loop):
 	return incrementRatio * numberOfPointsInside
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return CombRepository()
 
 def getPathsByIntersectedLoop( begin, end, loop ):
@@ -134,11 +114,9 @@ def getPathsByIntersectedLoop( begin, end, loop ):
 	widdershinsPath.append( nearestEnd )
 	return [ clockwisePath, widdershinsPath ]
 
-def writeOutput(fileName=''):
+def writeOutput(fileName, shouldAnalyze=True):
 	"Comb a gcode linear move file."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName != '':
-		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'comb')
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'comb', shouldAnalyze)
 
 
 class CombRepository:
@@ -147,7 +125,7 @@ class CombRepository:
 		"Set the default settings, execute title & settings fileName."
 		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.comb.html', self )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Comb', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Comb')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Comb')
 		self.activateComb = settings.BooleanSetting().getFromValue('Activate Comb', self, False )
 		self.executeTitle = 'Comb'
 
@@ -161,6 +139,8 @@ class CombRepository:
 class CombSkein:
 	"A class to comb a skein of extrusions."
 	def __init__(self):
+		'Initialize'
+		self.isAlteration = False
 		self.betweenTable = {}
 		self.boundaryLoop = None
 		self.distanceFeedRate = gcodec.DistanceFeedRate()
@@ -175,7 +155,7 @@ class CombSkein:
 		self.oldLocation = None
 		self.oldZ = None
 		self.operatingFeedRatePerMinute = None
-		self.travelFeedRatePerMinute = None
+		self.travelFeedRateMinute = None
 
 	def addGcodePathZ( self, feedRateMinute, path, z ):
 		"Add a gcode path, without modifying the extruder, to the output."
@@ -185,10 +165,10 @@ class CombSkein:
 	def addIfTravel( self, splitLine ):
 		"Add travel move around loops if the extruder is off."
 		location = gcodec.getLocationFromSplitLine(self.oldLocation, splitLine)
-		if not self.extruderActive and self.oldLocation != None:
+		if not self.isAlteration and not self.extruderActive and self.oldLocation != None:
 			if len( self.getBoundaries() ) > 0:
 				highestZ = max( location.z, self.oldLocation.z )
-				self.addGcodePathZ( self.travelFeedRatePerMinute, self.getPathsBetween( self.oldLocation.dropAxis(2), location.dropAxis(2) ), highestZ )
+				self.addGcodePathZ( self.travelFeedRateMinute, self.getPathsBetween( self.oldLocation.dropAxis(), location.dropAxis() ), highestZ )
 		self.oldLocation = location
 
 	def addToLoop(self, location):
@@ -201,7 +181,7 @@ class CombSkein:
 			self.boundaryLoop = [] #starting with an empty array because a closed loop does not have to restate its beginning
 			self.layer.append( self.boundaryLoop )
 		if self.boundaryLoop != None:
-			self.boundaryLoop.append( location.dropAxis(2) )
+			self.boundaryLoop.append(location.dropAxis())
 
 	def getBetweens(self):
 		"Set betweens for the layer."
@@ -211,7 +191,7 @@ class CombSkein:
 			return []
 		self.betweenTable[ self.layerZ ] = []
 		for boundaryLoop in self.layerTable[ self.layerZ ]:
-			self.betweenTable[ self.layerZ ] += intercircle.getInsetLoopsFromLoop( self.betweenInset, boundaryLoop )
+			self.betweenTable[ self.layerZ ] += intercircle.getInsetLoopsFromLoop(boundaryLoop, self.betweenInset)
 		return self.betweenTable[ self.layerZ ]
 
 	def getBoundaries(self):
@@ -393,7 +373,7 @@ class CombSkein:
 			firstWord = gcodec.getFirstWord(splitLine)
 			self.distanceFeedRate.parseSplitLine(firstWord, splitLine)
 			if firstWord == '(</extruderInitialization>)':
-				self.distanceFeedRate.addLine('(<procedureDone> comb </procedureDone>)')
+				self.distanceFeedRate.addLine('(<procedureName> comb </procedureName>)')
 				return
 			elif firstWord == '(<perimeterWidth>':
 				perimeterWidth = float(splitLine[1])
@@ -401,7 +381,7 @@ class CombSkein:
 				self.betweenInset = 0.4 * perimeterWidth
 				self.uTurnWidth = 0.5 * self.betweenInset
 			elif firstWord == '(<travelFeedRatePerSecond>':
-				self.travelFeedRatePerMinute = 60.0 * float(splitLine[1])
+				self.travelFeedRateMinute = 60.0 * float(splitLine[1])
 			self.distanceFeedRate.addLine(line)
 
 	def parseLine(self, line):
@@ -417,6 +397,10 @@ class CombSkein:
 			self.extruderActive = True
 		elif firstWord == 'M103':
 			self.extruderActive = False
+		elif firstWord == '(<alteration>)':
+			self.isAlteration = True
+		elif firstWord == '(</alteration>)':
+			self.isAlteration = False
 		elif firstWord == '(<layer>':
 			self.layerCount.printProgressIncrement('comb')
 			self.nextLayerZ = float(splitLine[1])

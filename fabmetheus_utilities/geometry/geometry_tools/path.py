@@ -9,8 +9,9 @@ import __init__
 
 from fabmetheus_utilities.geometry.geometry_tools import dictionary
 from fabmetheus_utilities.geometry.geometry_tools import vertex
-from fabmetheus_utilities.geometry.manipulation_evaluator import matrix
+from fabmetheus_utilities.geometry.geometry_utilities.evaluate_elements import setting
 from fabmetheus_utilities.geometry.geometry_utilities import evaluate
+from fabmetheus_utilities.geometry.geometry_utilities import matrix
 from fabmetheus_utilities.vector3 import Vector3
 from fabmetheus_utilities import euclidean
 from fabmetheus_utilities import svg_writer
@@ -20,41 +21,57 @@ from fabmetheus_utilities import xml_simple_writer
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Art of Illusion <http://www.artofillusion.org/>'
-__date__ = "$Date: 2008/02/05 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
-def convertProcessXMLElementRenameByPaths(geometryOutput, xmlElement):
-	"Convert the xml element to a path xml element, add paths and process."
-	convertXMLElementRenameByPaths(geometryOutput, xmlElement)
-	processXMLElement(xmlElement)
-
-def convertXMLElement(geometryOutput, xmlElement):
-	"Convert the xml element to a path xml element."
+def convertXMLElementByPath(geometryOutput, xmlElement):
+	'Convert the xml element to a path xml element.'
+	createLinkPath(xmlElement)
+	xmlElement.xmlObject.vertexes = geometryOutput
 	vertex.addGeometryList(geometryOutput, xmlElement)
 
-def convertXMLElementRename(geometryOutput, xmlElement):
-	"Convert the xml element to a path xml element."
-	xmlElement.className = 'path'
-	convertXMLElement(geometryOutput, xmlElement)
+def convertXMLElement(geometryOutput, xmlElement):
+	'Convert the xml element by geometryOutput.'
+	if geometryOutput == None:
+		return
+	if len(geometryOutput) < 1:
+		return
+	if len(geometryOutput) == 1:
+		firstLoop = geometryOutput[0]
+		if firstLoop.__class__ == list:
+			geometryOutput = firstLoop
+	firstElement = geometryOutput[0]
+	if firstElement.__class__ == list:
+		if len(firstElement) > 1:
+			convertXMLElementRenameByPaths(geometryOutput, xmlElement)
+		else:
+			convertXMLElementByPath(firstElement, xmlElement)
+	else:
+		convertXMLElementByPath(geometryOutput, xmlElement)
 
 def convertXMLElementRenameByPaths(geometryOutput, xmlElement):
-	"Convert the xml element to a path xml element and add paths."
-	xmlElement.className = 'path'
+	'Convert the xml element to a path xml element and add paths.'
+	createLinkPath(xmlElement)
 	for geometryOutputChild in geometryOutput:
 		pathElement = xml_simple_reader.XMLElement()
 		pathElement.setParentAddToChildren(xmlElement)
-		convertXMLElementRename( geometryOutputChild, pathElement)
+		convertXMLElementByPath(geometryOutputChild, pathElement)
+
+def createLinkPath(xmlElement):
+	'Create and link a path object.'
+	xmlElement.className = 'path'
+	xmlElement.linkObject(Path())
 
 def processXMLElement(xmlElement):
-	"Process the xml element."
+	'Process the xml element.'
 	evaluate.processArchivable(Path, xmlElement)
 
 
 class Path(dictionary.Dictionary):
-	"A path."
+	'A path.'
 	def __init__(self):
-		"Add empty lists."
+		'Add empty lists.'
 		dictionary.Dictionary.__init__(self)
 		self.matrix4X4 = matrix.Matrix()
 		self.oldChainTetragrid = None
@@ -62,35 +79,39 @@ class Path(dictionary.Dictionary):
 		self.vertexes = []
 
 	def addXMLInnerSection(self, depth, output):
-		"Add the xml section for this object."
+		'Add the xml section for this object.'
 		if self.matrix4X4 != None:
 			self.matrix4X4.addXML(depth, output)
 		xml_simple_writer.addXMLFromVertexes(depth, output, self.vertexes)
 
 	def getFabricationExtension(self):
-		"Get fabrication extension."
+		'Get fabrication extension.'
 		return 'svg'
 
-	def getFabricationText(self):
-		"Get fabrication text."
-		carving = SVGFabricationCarving(self.xmlElement)
-		carving.setCarveLayerThickness(evaluate.getSheetThickness(self.xmlElement))
+	def getFabricationText(self, addLayerTemplate):
+		'Get fabrication text.'
+		carving = SVGFabricationCarving(addLayerTemplate, self.xmlElement)
+		carving.setCarveLayerThickness(setting.getSheetThickness(self.xmlElement))
 		carving.processSVGElement(self.xmlElement.getRoot().parser.fileName)
 		return str(carving)
 
+	def getMatrix4X4(self):
+		"Get the matrix4X4."
+		return self.matrix4X4
+
 	def getMatrixChainTetragrid(self):
-		"Get the matrix chain tetragrid."
-		return self.matrix4X4.getOtherTimesSelf(self.xmlElement.parent.object.getMatrixChainTetragrid()).matrixTetragrid
+		'Get the matrix chain tetragrid.'
+		return matrix.getTetragridTimesOther(self.xmlElement.parent.xmlObject.getMatrixChainTetragrid(), self.matrix4X4.tetragrid)
 
 	def getPaths(self):
-		"Get all paths."
+		'Get all paths.'
 		self.transformedPath = None
 		if len(self.vertexes) > 0:
 			return dictionary.getAllPaths([self.vertexes], self)
 		return dictionary.getAllPaths([], self)
 
 	def getTransformedPaths(self):
-		"Get all transformed paths."
+		'Get all transformed paths.'
 		if self.xmlElement == None:
 			return dictionary.getAllPaths([self.vertexes], self)
 		chainTetragrid = self.getMatrixChainTetragrid()
@@ -105,81 +126,83 @@ class Path(dictionary.Dictionary):
 
 
 class SVGFabricationCarving:
-	"An slc carving."
-	def __init__(self, xmlElement):
-		"Add empty lists."
+	'An svg carving.'
+	def __init__(self, addLayerTemplate, xmlElement):
+		'Add empty lists.'
+		self.addLayerTemplate = addLayerTemplate
 		self.layerThickness = 1.0
 		self.rotatedLoopLayers = []
 		self.xmlElement = xmlElement
 
 	def __repr__(self):
-		"Get the string representation of this carving."
+		'Get the string representation of this carving.'
 		return self.getCarvedSVG()
 
 	def addXML(self, depth, output):
-		"Add xml for this object."
+		'Add xml for this object.'
 		xml_simple_writer.addXMLFromObjects(depth, self.rotatedLoopLayers, output)
 
 	def getCarveCornerMaximum(self):
-		"Get the corner maximum of the vertexes."
+		'Get the corner maximum of the vertexes.'
 		return self.cornerMaximum
 
 	def getCarveCornerMinimum(self):
-		"Get the corner minimum of the vertexes."
+		'Get the corner minimum of the vertexes.'
 		return self.cornerMinimum
 
 	def getCarvedSVG(self):
-		"Get the carved svg text."
-		return svg_writer.getSVGByLoopLayers(False, self.rotatedLoopLayers, self)
+		'Get the carved svg text.'
+		return svg_writer.getSVGByLoopLayers(self.addLayerTemplate, self, self.rotatedLoopLayers)
 
 	def getCarveLayerThickness(self):
-		"Get the layer thickness."
+		'Get the layer thickness.'
 		return self.layerThickness
 
 	def getCarveRotatedBoundaryLayers(self):
-		"Get the rotated boundary layers."
+		'Get the rotated boundary layers.'
 		return self.rotatedLoopLayers
 
 	def getFabmetheusXML(self):
-		"Return the fabmetheus XML."
+		'Return the fabmetheus XML.'
 		return self.xmlElement.getParser().getOriginalRoot()
 
 	def getInterpretationSuffix(self):
-		"Return the suffix for a carving."
+		'Return the suffix for a carving.'
 		return 'svg'
 
 	def processSVGElement(self, fileName):
-		"Parse SVG element and store the layers."
+		'Parse SVG element and store the layers.'
 		self.fileName = fileName
-		paths = self.xmlElement.object.getPaths()
-		if len(paths) < 1:
-			return
-		firstPath = paths[0]
-		if len(firstPath) < 1:
-			return
-		rotatedLoopLayer = euclidean.RotatedLoopLayer(firstPath[0].z)
-		self.rotatedLoopLayers.append(rotatedLoopLayer)
+		paths = self.xmlElement.xmlObject.getPaths()
+		oldZ = None
+		self.rotatedLoopLayers = []
+		rotatedLoopLayer = None
 		for path in paths:
-			rotatedLoopLayer.loops.append(euclidean.getComplexPath(path))
-		self.cornerMaximum = Vector3(-999999999.0, -999999999.0, -999999999.0)
-		self.cornerMinimum = Vector3(999999999.0, 999999999.0, 999999999.0)
-		svg_writer.setSVGCarvingCorners(self.rotatedLoopLayers, self)
-		halfLayerThickness = 0.5 * self.layerThickness
-		self.cornerMaximum.z += halfLayerThickness
-		self.cornerMinimum.z -= halfLayerThickness
+			if len(path) > 0:
+				z = path[0].z
+				if z != oldZ:
+					rotatedLoopLayer = euclidean.RotatedLoopLayer(z)
+					self.rotatedLoopLayers.append(rotatedLoopLayer)
+					oldZ = z
+				rotatedLoopLayer.loops.append(euclidean.getComplexPath(path))
+		if len(self.rotatedLoopLayers) < 1:
+			return
+		self.cornerMaximum = Vector3(-987654321.0, -987654321.0, -987654321.0)
+		self.cornerMinimum = Vector3(987654321.0, 987654321.0, 987654321.0)
+		svg_writer.setSVGCarvingCorners(self.cornerMaximum, self.cornerMinimum, self.layerThickness, self.rotatedLoopLayers)
 
-	def setCarveBridgeLayerThickness( self, bridgeLayerThickness ):
-		"Set the bridge layer thickness.  If the infill is not in the direction of the bridge, the bridge layer thickness should be given as None or not set at all."
+	def setCarveInfillInDirectionOfBridge( self, infillInDirectionOfBridge ):
+		'Set the infill in direction of bridge.'
 		pass
 
 	def setCarveLayerThickness( self, layerThickness ):
-		"Set the layer thickness."
+		'Set the layer thickness.'
 		self.layerThickness = layerThickness
 
 	def setCarveImportRadius( self, importRadius ):
-		"Set the import radius."
+		'Set the import radius.'
 		pass
 
 	def setCarveIsCorrectMesh( self, isCorrectMesh ):
-		"Set the is correct mesh flag."
+		'Set the is correct mesh flag.'
 		pass

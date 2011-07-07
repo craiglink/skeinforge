@@ -8,7 +8,10 @@ and in Erik de Bruijn's conversion script page at:
 http://objects.reprap.org/wiki/3D-to-5D-Gcode.php
 
 The dimension manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Dimension
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Dimension
+
+Nophead wrote an excellent article on how to set the filament parameters:
+http://hydraraptor.blogspot.com/2011/03/spot-on-flow-rate.html
 
 ==Operation==
 The default 'Activate Dimension' checkbox is off.  When it is on, the functions described below will work, when it is off, the functions will not be called.
@@ -28,6 +31,21 @@ Default is 13.3 mm/s.
 
 Defines the extruder retraction feed rate.
 
+===Filament===
+====Filament Diameter====
+Default is 2.8 millimeters.
+
+Defines the filament diameter.
+
+====Filament Packing Density====
+Default is 0.85.  This is for ABS.
+
+Defines the effective filament packing density.
+
+The default value is so low for ABS because ABS is relatively soft and with a pinch wheel extruder the teeth of the pinch dig in farther, so it sees a smaller effective diameter.  With a hard plastic like PLA the teeth of the pinch wheel don't dig in as far, so it sees a larger effective diameter, so feeds faster, so for PLA the value should be around 0.97.  This is with Wade's hobbed bolt.  The effect is less significant with larger pinch wheels.
+
+Overall, you'll have to find the optimal filament packing density by experiment.
+
 ===Retraction Distance===
 Default is zero.
 
@@ -41,29 +59,10 @@ Defines the restart extra distance when the thread restarts.  The restart distan
 ==Examples==
 The following examples dimension the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and dimension.py.
 
-
 > python dimension.py
 This brings up the dimension dialog.
 
-
 > python dimension.py Screw Holder Bottom.stl
-The dimension tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The dimension tool has created the file:
-.. Screw Holder Bottom_dimension.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import dimension
->>> dimension.main()
-This brings up the dimension dialog.
-
-
->>> dimension.writeOutput('Screw Holder Bottom.stl')
 The dimension tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -91,8 +90,8 @@ import sys
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
-__date__ = "$Date: 2008/28/04 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, gcodeText = '', repository=None):
@@ -110,14 +109,12 @@ def getCraftedTextFromText(gcodeText, repository=None):
 	return DimensionSkein().getCraftedGcode(gcodeText, repository)
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return DimensionRepository()
 
-def writeOutput(fileName=''):
+def writeOutput(fileName, shouldAnalyze=True):
 	"Dimension a gcode file."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName != '':
-		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'dimension')
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'dimension', shouldAnalyze)
 
 
 class DimensionRepository:
@@ -126,13 +123,18 @@ class DimensionRepository:
 		"Set the default settings, execute title & settings fileName."
 		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.dimension.html', self )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Dimension', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Dimension')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Dimension')
 		self.activateDimension = settings.BooleanSetting().getFromValue('Activate Dimension', self, False )
 		extrusionDistanceFormatLatentStringVar = settings.LatentStringVar()
 		self.extrusionDistanceFormatChoiceLabel = settings.LabelDisplay().getFromName('Extrusion Distance Format Choice: ', self )
 		settings.Radio().getFromRadio( extrusionDistanceFormatLatentStringVar, 'Absolute Extrusion Distance', self, True )
 		self.relativeExtrusionDistance = settings.Radio().getFromRadio( extrusionDistanceFormatLatentStringVar, 'Relative Extrusion Distance', self, False )
 		self.extruderRetractionSpeed = settings.FloatSpin().getFromValue( 4.0, 'Extruder Retraction Speed (mm/s):', self, 34.0, 13.3 )
+		settings.LabelSeparator().getFromRepository(self)
+		settings.LabelDisplay().getFromName('- Filament -', self )
+		self.filamentDiameter = settings.FloatSpin().getFromValue(1.0, 'Filament Diameter (mm):', self, 6.0, 2.8)
+		self.filamentPackingDensity = settings.FloatSpin().getFromValue(0.7, 'Filament Packing Density (ratio):', self, 1.0, 0.85)
+		settings.LabelSeparator().getFromRepository(self)
 		self.retractionDistance = settings.FloatSpin().getFromValue( 0.0, 'Retraction Distance (millimeters):', self, 100.0, 0.0 )
 		self.restartExtraDistance = settings.FloatSpin().getFromValue( 0.0, 'Restart Extra Distance (millimeters):', self, 100.0, 0.0 )
 		self.executeTitle = 'Dimension'
@@ -165,8 +167,11 @@ class DimensionSkein:
 	def getCraftedGcode(self, gcodeText, repository):
 		"Parse gcode text and store the dimension gcode."
 		self.repository = repository
-		self.lines = archive.getTextLines(gcodeText)
+		filamentRadius = 0.5 * repository.filamentDiameter.value
+		filamentPackingArea = math.pi * filamentRadius * filamentRadius * repository.filamentPackingDensity.value
+ 		self.lines = archive.getTextLines(gcodeText)
 		self.parseInitialization()
+		self.flowScaleSixty = 60.0 * self.layerThickness * self.perimeterWidth / filamentPackingArea
 		if self.operatingFlowRate == None:
 			print('There is no operatingFlowRate so dimension will do nothing.')
 			return gcodeText
@@ -209,7 +214,8 @@ class DimensionSkein:
 			return ''
 		if distance <= 0.0:
 			return ''
-		return self.getExtrusionDistanceStringFromExtrusionDistance( self.flowRate * 60.0 / self.feedRateMinute * distance )
+		scaledFlowRate = self.flowRate * self.flowScaleSixty
+		return self.getExtrusionDistanceStringFromExtrusionDistance(scaledFlowRate / self.feedRateMinute * distance)
 
 	def getExtrusionDistanceStringFromExtrusionDistance( self, extrusionDistance ):
 		"Get the extrusion distance string from the extrusion distance."
@@ -226,19 +232,23 @@ class DimensionSkein:
 			firstWord = gcodec.getFirstWord(splitLine)
 			self.distanceFeedRate.parseSplitLine(firstWord, splitLine)
 			if firstWord == '(</extruderInitialization>)':
-				self.distanceFeedRate.addLine('(<procedureDone> dimension </procedureDone>)')
+				self.distanceFeedRate.addLine('(<procedureName> dimension </procedureName>)')
 				return
+			elif firstWord == '(<layerThickness>':
+				self.layerThickness = float(splitLine[1])
 			elif firstWord == '(<operatingFeedRatePerSecond>':
 				self.feedRateMinute = 60.0 * float(splitLine[1])
 			elif firstWord == '(<operatingFlowRate>':
 				self.operatingFlowRate = float(splitLine[1])
 				self.flowRate = self.operatingFlowRate
+			elif firstWord == '(<perimeterWidth>':
+				self.perimeterWidth = float(splitLine[1])
 			self.distanceFeedRate.addLine(line)
 
 	def parseLine( self, lineIndex ):
 		"Parse a gcode line and add it to the dimension skein."
 		line = self.lines[lineIndex].lstrip()
-		splitLine = line.split()
+		splitLine = gcodec.getSplitLineBeforeBracketSemicolon(line)
 		if len(splitLine) < 1:
 			return
 		firstWord = splitLine[0]

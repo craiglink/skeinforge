@@ -3,13 +3,12 @@ This page is in the table of contents.
 Statistic is a script to generate statistics a gcode file.
 
 The statistic manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Statistic
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Statistic
 
 ==Operation==
 The default 'Activate Statistic' checkbox is on.  When it is on, the functions described below will work when called from the skeinforge toolchain, when it is off, the functions will not be called from the toolchain.  The functions will still be called, whether or not the 'Activate Statistic' checkbox is on, when statistic is run directly.
 
 ==Settings==
-
 ===Extrusion Diameter over Thickness===
 Default is 1.25.
 
@@ -26,7 +25,6 @@ Default is off.
 When the 'Save Statistics' checkbox is on, the statistics will be saved as a .txt file.
 
 ==Gcodes==
-
 An explanation of the gcodes is at:
 http://reprap.org/bin/view/Main/Arduino_GCode_Interpreter
 
@@ -37,29 +35,13 @@ A gode example is at:
 http://forums.reprap.org/file.php?12,file=565
 
 ==Examples==
-
 Below are examples of statistic being used.  These examples are run in a terminal in the folder which contains Screw Holder_penultimate.gcode and statistic.py.  The 'Save Statistics' checkbox is selected.
-
 
 > python statistic.py
 This brings up the statistic dialog.
 
-
 > python statistic.py Screw Holder_penultimate.gcode
 The statistic file is saved as Screw_Holder_penultimate_statistic.txt
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import statistic
->>> statistic.main()
-This brings up the statistic dialog.
-
-
->>> statistic.getWindowAnalyzeFile('Screw Holder_penultimate.gcode')
-The statistics file is saved as Screw Holder_penultimate_statistic.txt
 
 """
 
@@ -73,6 +55,7 @@ from fabmetheus_utilities import euclidean
 from fabmetheus_utilities import gcodec
 from fabmetheus_utilities import settings
 from skeinforge_application.skeinforge_utilities import skeinforge_polyfile
+from skeinforge_application.skeinforge_utilities import skeinforge_profile
 import cStringIO
 import math
 import sys
@@ -80,11 +63,11 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return StatisticRepository()
 
 def getWindowAnalyzeFile(fileName):
@@ -118,13 +101,13 @@ class StatisticRepository:
 	"A class to handle the statistics settings."
 	def __init__(self):
 		"Set the default settings, execute title & settings fileName."
-		settings.addListsToRepository('skeinforge_application.skeinforge_plugins.analyze_plugins.statistic.html', None, self )
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Statistic')
+		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.analyze_plugins.statistic.html', self)
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Statistic')
 		self.activateStatistic = settings.BooleanSetting().getFromValue('Activate Statistic', self, True )
 		settings.LabelSeparator().getFromRepository(self)
 		settings.LabelDisplay().getFromName('- Cost -', self )
-		self.machineTime = settings.FloatSpin().getFromValue( 0.0, 'Machine Time ($/hour):', self, 2.0, 1.0 )
-		self.material = settings.FloatSpin().getFromValue( 0.0, 'Material ($/kg):', self, 20.0, 10.0 )
+		self.machineTime = settings.FloatSpin().getFromValue( 0.0, 'Machine Time ($/hour):', self, 5.0, 1.0 )
+		self.material = settings.FloatSpin().getFromValue( 0.0, 'Material ($/kg):', self, 40.0, 20.0 )
 		settings.LabelSeparator().getFromRepository(self)
 		self.density = settings.FloatSpin().getFromValue( 500.0, 'Density (kg/m3):', self, 2000.0, 930.0 )
 		self.extrusionDiameterOverThickness = settings.FloatSpin().getFromValue( 1.0, 'Extrusion Diameter over Thickness (ratio):', self, 1.5, 1.25 )
@@ -147,6 +130,7 @@ class StatisticSkein:
 		self.oldLocation = None
 		self.operatingFeedRatePerSecond = None
 		self.output = cStringIO.StringIO()
+		self.profileName = None
 		self.version = None
 
 	def addLine(self, line):
@@ -162,8 +146,8 @@ class StatisticSkein:
 			self.totalDistanceTraveled += travel
 			if self.extruderActive:
 				self.totalDistanceExtruded += travel
-				self.cornerHigh = euclidean.getPointMaximum( self.cornerHigh, location )
-				self.cornerLow = euclidean.getPointMinimum( self.cornerLow, location )
+				self.cornerMaximum.maximize(location)
+				self.cornerMinimum.minimize(location)
 		self.oldLocation = location
 
 	def extruderSet( self, active ):
@@ -176,8 +160,8 @@ class StatisticSkein:
 		"Parse gcode text and store the statistics."
 		self.absolutePerimeterWidth = 0.4
 		self.characters = 0
-		self.cornerHigh = Vector3(-999999999.0, -999999999.0, -999999999.0)
-		self.cornerLow = Vector3(999999999.0, 999999999.0, 999999999.0)
+		self.cornerMaximum = Vector3(-987654321.0, -987654321.0, -987654321.0)
+		self.cornerMinimum = Vector3(987654321.0, 987654321.0, 987654321.0)
 		self.extruderActive = False
 		self.extruderSpeed = None
 		self.extruderToggled = 0
@@ -197,11 +181,11 @@ class StatisticSkein:
 		kilobytes = round( self.characters / 1024.0 )
 		halfPerimeterWidth = 0.5 * self.absolutePerimeterWidth
 		halfExtrusionCorner = Vector3( halfPerimeterWidth, halfPerimeterWidth, halfPerimeterWidth )
-		self.cornerHigh += halfExtrusionCorner
-		self.cornerLow -= halfExtrusionCorner
-		extent = self.cornerHigh - self.cornerLow
-		roundedHigh = euclidean.getRoundedPoint( self.cornerHigh )
-		roundedLow = euclidean.getRoundedPoint( self.cornerLow )
+		self.cornerMaximum += halfExtrusionCorner
+		self.cornerMinimum -= halfExtrusionCorner
+		extent = self.cornerMaximum - self.cornerMinimum
+		roundedHigh = euclidean.getRoundedPoint( self.cornerMaximum )
+		roundedLow = euclidean.getRoundedPoint( self.cornerMinimum )
 		roundedExtent = euclidean.getRoundedPoint( extent )
 		axisString =  " axis extrusion starts at "
 		crossSectionArea = 0.9 * self.absolutePerimeterWidth * self.layerThickness # 0.9 if from the typical fill density
@@ -253,6 +237,10 @@ class StatisticSkein:
 		self.addLine( "Procedures" )
 		for procedure in self.procedures:
 			self.addLine(procedure)
+		if self.profileName != None:
+			self.addLine(' ')
+			self.addLine( 'Profile' )
+			self.addLine(self.profileName)
 		self.addLine(' ')
 		self.addLine('Slice')
 		self.addLine( "Layer thickness is %s mm." % euclidean.getThreeSignificantFigures( self.layerThickness ) )
@@ -343,8 +331,10 @@ class StatisticSkein:
 			self.operatingFeedRatePerSecond = float(splitLine[1])
 		elif firstWord == '(<perimeterWidth>':
 			self.absolutePerimeterWidth = abs(float(splitLine[1]))
-		elif firstWord == '(<procedureDone>':
+		elif firstWord == '(<procedureName>':
 			self.procedures.append(splitLine[1])
+		elif firstWord == '(<profileName>':
+			self.profileName = splitLine[1]
 		elif firstWord == '(<version>':
 			self.version = splitLine[1]
 

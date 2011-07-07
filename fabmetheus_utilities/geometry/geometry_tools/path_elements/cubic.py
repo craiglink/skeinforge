@@ -18,8 +18,8 @@ from fabmetheus_utilities import svg_reader
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Art of Illusion <http://www.artofillusion.org/>'
-__date__ = "$Date: 2008/02/05 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCubicPath(xmlElement):
@@ -31,7 +31,7 @@ def getCubicPath(xmlElement):
 		print(xmlElement)
 		return [end]
 	begin = xmlElement.getPreviousVertex(Vector3())
-	evaluatedControlPoints = evaluate.getTransformedPathByKey('controlPoints', xmlElement)
+	evaluatedControlPoints = evaluate.getTransformedPathByKey([], 'controlPoints', xmlElement)
 	if len(evaluatedControlPoints) > 1:
 		return getCubicPathByBeginEnd(begin, evaluatedControlPoints, end, xmlElement)
 	controlPoint0 = evaluate.getVector3ByPrefix(None, 'controlPoint0', xmlElement)
@@ -41,7 +41,7 @@ def getCubicPath(xmlElement):
 	if controlPoint0 == None:
 		oldControlPoint = evaluate.getVector3ByPrefixes(['controlPoint','controlPoint1'], None, previousXMLElement)
 		if oldControlPoint == None:
-			oldControlPoints = evaluate.getTransformedPathByKey('controlPoints', previousXMLElement)
+			oldControlPoints = evaluate.getTransformedPathByKey([], 'controlPoints', previousXMLElement)
 			if len(oldControlPoints) > 0:
 				oldControlPoint = oldControlPoints[-1]
 		if oldControlPoint == None:
@@ -55,4 +55,4 @@ def getCubicPathByBeginEnd(begin, controlPoints, end, xmlElement):
 
 def processXMLElement(xmlElement):
 	"Process the xml element."
-	xmlElement.parent.object.vertexes += getCubicPath(xmlElement)
+	xmlElement.parent.xmlObject.vertexes += getCubicPath(xmlElement)

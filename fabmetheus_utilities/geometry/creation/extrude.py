@@ -9,8 +9,9 @@ import __init__
 
 from fabmetheus_utilities.geometry.creation import lineation
 from fabmetheus_utilities.geometry.creation import solid
+from fabmetheus_utilities.geometry.geometry_utilities.evaluate_elements import setting
 from fabmetheus_utilities.geometry.geometry_utilities import evaluate
-from fabmetheus_utilities.geometry.solids import trianglemesh
+from fabmetheus_utilities.geometry.solids import triangle_mesh
 from fabmetheus_utilities.vector3 import Vector3
 from fabmetheus_utilities.vector3index import Vector3Index
 from fabmetheus_utilities import euclidean
@@ -19,15 +20,15 @@ import math
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Art of Illusion <http://www.artofillusion.org/>'
-__date__ = "$Date: 2008/02/05 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def addLoop(derivation, endMultiplier, loopLists, path, portionDirectionIndex, portionDirections, vertexes):
-	"Add an indexed loop to the vertexes."
+	'Add an indexed loop to the vertexes.'
 	portionDirection = portionDirections[ portionDirectionIndex ]
 	if portionDirection.directionReversed == True:
-		loopLists.append( [] )
+		loopLists.append([])
 	loops = loopLists[-1]
 	interpolationOffset = derivation.interpolationDictionary['offset']
 	offset = interpolationOffset.getVector3ByPortion( portionDirection )
@@ -35,7 +36,7 @@ def addLoop(derivation, endMultiplier, loopLists, path, portionDirectionIndex, p
 		if portionDirectionIndex == 0:
 			setOffsetByMultiplier( interpolationOffset.path[1], interpolationOffset.path[0], endMultiplier, offset )
 		elif portionDirectionIndex == len( portionDirections ) - 1:
-			setOffsetByMultiplier( interpolationOffset.path[ - 2 ], interpolationOffset.path[-1], endMultiplier, offset )
+			setOffsetByMultiplier( interpolationOffset.path[-2], interpolationOffset.path[-1], endMultiplier, offset )
 	scale = derivation.interpolationDictionary['scale'].getComplexByPortion( portionDirection )
 	twist = derivation.interpolationDictionary['twist'].getYByPortion( portionDirection )
 	projectiveSpace = euclidean.ProjectiveSpace()
@@ -67,36 +68,43 @@ def addLoop(derivation, endMultiplier, loopLists, path, portionDirectionIndex, p
 	loops.append(loop)
 
 def addNegatives(derivation, negatives, paths):
-	"Add pillars output to negatives."
+	'Add pillars output to negatives.'
 	portionDirections = getSpacedPortionDirections(derivation.interpolationDictionary)
 	for path in paths:
-		endMultiplier = 1.000001
-		loopLists = getLoopListsByPath(derivation, endMultiplier, path, portionDirections)
-		geometryOutput = trianglemesh.getPillarsOutput(loopLists)
+		loopLists = getLoopListsByPath(derivation, 1.000001, path, portionDirections)
+		geometryOutput = triangle_mesh.getPillarsOutput(loopLists)
 		negatives.append(geometryOutput)
 
 def addNegativesPositives(derivation, negatives, paths, positives):
-	"Add pillars output to negatives and positives."
+	'Add pillars output to negatives and positives.'
 	portionDirections = getSpacedPortionDirections(derivation.interpolationDictionary)
 	for path in paths:
 		endMultiplier = None
 		if not euclidean.getIsWiddershinsByVector3(path):
 			endMultiplier = 1.000001
 		loopLists = getLoopListsByPath(derivation, endMultiplier, path, portionDirections)
-		geometryOutput = trianglemesh.getPillarsOutput(loopLists)
+		geometryOutput = triangle_mesh.getPillarsOutput(loopLists)
 		if endMultiplier == None:
 			positives.append(geometryOutput)
 		else:
 			negatives.append(geometryOutput)
 
-def addOffsetAddToLists( loop, offset, vector3Index, vertexes ):
-	"Add an indexed loop to the vertexes."
+def addOffsetAddToLists(loop, offset, vector3Index, vertexes):
+	'Add an indexed loop to the vertexes.'
 	vector3Index += offset
-	loop.append( vector3Index )
-	vertexes.append( vector3Index )
+	loop.append(vector3Index)
+	vertexes.append(vector3Index)
+
+def addPositives(derivation, paths, positives):
+	'Add pillars output to positives.'
+	portionDirections = getSpacedPortionDirections(derivation.interpolationDictionary)
+	for path in paths:
+		loopLists = getLoopListsByPath(derivation, None, path, portionDirections)
+		geometryOutput = triangle_mesh.getPillarsOutput(loopLists)
+		positives.append(geometryOutput)
 
 def addSpacedPortionDirection( portionDirection, spacedPortionDirections ):
-	"Add spaced portion directions."
+	'Add spaced portion directions.'
 	lastSpacedPortionDirection = spacedPortionDirections[-1]
 	if portionDirection.portion - lastSpacedPortionDirection.portion > 0.003:
 		spacedPortionDirections.append( portionDirection )
@@ -105,7 +113,7 @@ def addSpacedPortionDirection( portionDirection, spacedPortionDirections ):
 		spacedPortionDirections.append( portionDirection )
 
 def addTwistPortions( interpolationTwist, remainderPortionDirection, twistPrecision ):
-	"Add twist portions."
+	'Add twist portions.'
 	lastPortionDirection = interpolationTwist.portionDirections[-1]
 	if remainderPortionDirection.portion == lastPortionDirection.portion:
 		return
@@ -122,7 +130,7 @@ def addTwistPortions( interpolationTwist, remainderPortionDirection, twistPrecis
 		interpolationTwist.portionDirections.append( portionDirection )
 
 def comparePortionDirection( portionDirection, otherPortionDirection ):
-	"Comparison in order to sort portion directions in ascending order of portion then direction."
+	'Comparison in order to sort portion directions in ascending order of portion then direction.'
 	if portionDirection.portion > otherPortionDirection.portion:
 		return 1
 	if portionDirection.portion < otherPortionDirection.portion:
@@ -132,10 +140,9 @@ def comparePortionDirection( portionDirection, otherPortionDirection ):
 	return portionDirection.directionReversed > otherPortionDirection.directionReversed
 
 def getGeometryOutput(derivation, xmlElement):
-	"Get triangle mesh from attribute dictionary."
+	'Get triangle mesh from attribute dictionary.'
 	if derivation == None:
-		derivation = ExtrudeDerivation()
-		derivation.setToXMLElement(xmlElement)
+		derivation = ExtrudeDerivation(xmlElement)
 	if derivation.radius != complex():
 		maximumRadius = max(derivation.radius.real, derivation.radius.imag)
 		sides = int(math.ceil(evaluate.getSidesMinimumThreeBasedOnPrecisionSides(maximumRadius, xmlElement)))
@@ -151,44 +158,64 @@ def getGeometryOutput(derivation, xmlElement):
 		print('Warning, in extrude there are no paths.')
 		print(xmlElement.attributeDictionary)
 		return None
-	negatives = []
-	positives = []
-	addNegativesPositives(derivation, negatives, derivation.target, positives)
-	return getGeometryOutputByNegativesPositives(derivation, negatives, positives, xmlElement)
+	return getGeometryOutputByLoops(derivation, derivation.target)
 
 def getGeometryOutputByArguments(arguments, xmlElement):
-	"Get triangle mesh from attribute dictionary by arguments."
+	'Get triangle mesh from attribute dictionary by arguments.'
 	return getGeometryOutput(None, xmlElement)
 
-def getGeometryOutputByConnection(connectionEnd, connectionStart, geometryOutput, xmlElement):
-	"Get solid output by connection."
-	firstValue = geometryOutput.values()[0]
-	firstValue['connectionStart'] = connectionStart
-	firstValue['connectionEnd'] = connectionEnd
-	return solid.getGeometryOutputByManipulation(geometryOutput, xmlElement)
+def getGeometryOutputByLoops(derivation, loops):
+	'Get geometry output by sorted, nested loops.'
+	loops.sort(key=euclidean.getAreaVector3LoopAbsolute, reverse=True)
+	complexLoops = euclidean.getComplexPaths(loops)
+	nestedRings = []
+	for loopIndex, loop in enumerate(loops):
+		complexLoop = complexLoops[loopIndex]
+		leftPoint = euclidean.getLeftPoint(complexLoop)
+		isInFilledRegion = euclidean.getIsInFilledRegion(complexLoops[: loopIndex] + complexLoops[loopIndex + 1 :], leftPoint)
+		if isInFilledRegion == euclidean.isWiddershins(complexLoop):
+			loop.reverse()
+		nestedRing = euclidean.NestedRing()
+		nestedRing.boundary = complexLoop
+		nestedRing.vector3Loop = loop
+		nestedRings.append(nestedRing)
+	nestedRings = euclidean.getOrderedNestedRings(nestedRings)
+	nestedRings = euclidean.getFlattenedNestedRings(nestedRings)
+	portionDirections = getSpacedPortionDirections(derivation.interpolationDictionary)
+	if len(nestedRings) < 1:
+		return {}
+	if len(nestedRings) == 1:
+		geometryOutput = getGeometryOutputByNestedRing(derivation, nestedRings[0], portionDirections)
+		return solid.getGeometryOutputByManipulation(geometryOutput, derivation.xmlElement)
+	shapes = []
+	for nestedRing in nestedRings:
+		shapes.append(getGeometryOutputByNestedRing(derivation, nestedRing, portionDirections))
+	return solid.getGeometryOutputByManipulation({'union' : {'shapes' : shapes}}, derivation.xmlElement)
 
-def getGeometryOutputByNegativesPositives(derivation, negatives, positives, xmlElement):
-	"Get triangle mesh from derivation, negatives, positives and xmlElement."
-	interpolationOffset = derivation.interpolationDictionary['offset']
-	positiveOutput = trianglemesh.getUnifiedOutput(positives)
+def getGeometryOutputByNegativesPositives(negatives, positives, xmlElement):
+	'Get triangle mesh from derivation, negatives, positives and xmlElement.'
+	positiveOutput = triangle_mesh.getUnifiedOutput(positives)
 	if len(negatives) < 1:
-		return getGeometryOutputByOffset(positiveOutput, interpolationOffset, xmlElement)
+		return solid.getGeometryOutputByManipulation(positiveOutput, xmlElement)
 	if len(positives) < 1:
-		negativeOutput = trianglemesh.getUnifiedOutput(negatives)
-		return getGeometryOutputByOffset(negativeOutput, interpolationOffset, xmlElement)
-	return getGeometryOutputByOffset({'difference' : {'shapes' : [positiveOutput] + negatives}}, interpolationOffset, xmlElement)
+		negativeOutput = triangle_mesh.getUnifiedOutput(negatives)
+		return solid.getGeometryOutputByManipulation(negativeOutput, xmlElement)
+	return solid.getGeometryOutputByManipulation({'difference' : {'shapes' : [positiveOutput] + negatives}}, xmlElement)
 
-def getGeometryOutputByOffset( geometryOutput, interpolationOffset, xmlElement ):
-	"Get solid output by interpolationOffset."
-	geometryOutputValues = geometryOutput.values()
-	if len(geometryOutputValues) < 1:
-		return geometryOutput
-	connectionStart = interpolationOffset.getVector3ByPortion(PortionDirection(0.0))
-	connectionEnd = interpolationOffset.getVector3ByPortion(PortionDirection(1.0))
-	return getGeometryOutputByConnection(connectionEnd, connectionStart, geometryOutput, xmlElement)
+def getGeometryOutputByNestedRing(derivation, nestedRing, portionDirections):
+	'Get geometry output by sorted, nested loops.'
+	loopLists = getLoopListsByPath(derivation, None, nestedRing.vector3Loop, portionDirections)
+	outsideOutput = triangle_mesh.getPillarsOutput(loopLists)
+	if len(nestedRing.innerNestedRings) < 1:
+		return outsideOutput
+	shapes = [outsideOutput]
+	for nestedRing.innerNestedRing in nestedRing.innerNestedRings:
+		loopLists = getLoopListsByPath(derivation, 1.000001, nestedRing.innerNestedRing.vector3Loop, portionDirections)
+		shapes.append(triangle_mesh.getPillarsOutput(loopLists))
+	return {'difference' : {'shapes' : shapes}}
 
 def getLoopListsByPath(derivation, endMultiplier, path, portionDirections):
-	"Get loop lists from path."
+	'Get loop lists from path.'
 	vertexes = []
 	loopLists = [[]]
 	derivation.oldProjectiveSpace = None
@@ -196,14 +223,18 @@ def getLoopListsByPath(derivation, endMultiplier, path, portionDirections):
 		addLoop(derivation, endMultiplier, loopLists, path, portionDirectionIndex, portionDirections, vertexes)
 	return loopLists
 
+def getNewDerivation(xmlElement):
+	'Get new derivation.'
+	return ExtrudeDerivation(xmlElement)
+
 def getNormalAverage(normals):
-	"Get normal."
+	'Get normal.'
 	if len(normals) < 2:
 		return normals[0]
 	return (normals[0] + normals[1]).getNormalized()
 
 def getNormals( interpolationOffset, offset, portionDirection ):
-	"Get normals."
+	'Get normals.'
 	normals = []
 	portionFrom = portionDirection.portion - 0.0001
 	portionTo = portionDirection.portion + 0.0001
@@ -214,7 +245,7 @@ def getNormals( interpolationOffset, offset, portionDirection ):
 	return normals
 
 def getSpacedPortionDirections( interpolationDictionary ):
-	"Get sorted portion directions."
+	'Get sorted portion directions.'
 	portionDirections = []
 	for interpolationDictionaryValue in interpolationDictionary.values():
 		portionDirections += interpolationDictionaryValue.portionDirections
@@ -227,7 +258,7 @@ def getSpacedPortionDirections( interpolationDictionary ):
 	return spacedPortionDirections
 
 def insertTwistPortions(derivation, xmlElement):
-	"Insert twist portions and radian the twist."
+	'Insert twist portions and radian the twist.'
 	interpolationDictionary = derivation.interpolationDictionary
 	interpolationTwist = Interpolation().getByPrefixX(derivation.twistPathDefault, 'twist', xmlElement)
 	interpolationDictionary['twist'] = interpolationTwist
@@ -235,91 +266,90 @@ def insertTwistPortions(derivation, xmlElement):
 		point.y = math.radians(point.y)
 	remainderPortionDirections = interpolationTwist.portionDirections[1 :]
 	interpolationTwist.portionDirections = [interpolationTwist.portionDirections[0]]
-	twistPrecision = 5.0
 	if xmlElement != None:
-		twistPrecision = math.radians(xmlElement.getCascadeFloat(twistPrecision, 'twistprecision'))
+		twistPrecision = setting.getTwistPrecisionRadians(xmlElement)
 	for remainderPortionDirection in remainderPortionDirections:
 		addTwistPortions(interpolationTwist, remainderPortionDirection, twistPrecision)
 		interpolationTwist.portionDirections.append(remainderPortionDirection)
 
 def processXMLElement(xmlElement):
-	"Process the xml element."
+	'Process the xml element.'
 	solid.processXMLElementByGeometry(getGeometryOutput(None, xmlElement), xmlElement)
 
-def setOffsetByMultiplier( begin, end, multiplier, offset ):
-	"Set the offset by the multiplier."
+def setXMLElementToEndStart(end, start, xmlElement):
+	'Set xmlElement attribute dictionary to a tilt following path from the start to end.'
+	xmlElement.attributeDictionary['path'] = [start, end]
+	xmlElement.attributeDictionary['tiltFollow'] = 'true'
+	xmlElement.attributeDictionary['tiltTop'] = Vector3(0.0, 0.0, 1.0)
+
+def setOffsetByMultiplier(begin, end, multiplier, offset):
+	'Set the offset by the multiplier.'
 	segment = end - begin
 	delta = segment * multiplier - segment
-	offset.setToVector3( offset + delta )
+	offset.setToVector3(offset + delta)
 
 
 class ExtrudeDerivation:
-	"Class to hold extrude variables."
-	def __init__(self):
-		'Set defaults.'
-		self.maximumUnbuckling = 5.0
+	'Class to hold extrude variables.'
+	def __init__(self, xmlElement):
+		'Initialize.'
 		self.interpolationDictionary = {}
-		self.offsetAlongDefault = [Vector3(), Vector3(1.0, 0.0, 0.0)]
-		self.offsetPathDefault = [Vector3(), Vector3(0.0, 0.0, 1.0)]
-		self.radius = complex()
-		self.scalePathDefault = [Vector3(1.0, 1.0, 0.0), Vector3(1.0, 1.0, 1.0)]
-		self.target = []
-		self.tiltFollow = True
-		self.tiltPathDefault = [Vector3(), Vector3(0.0, 0.0, 1.0)]
-		self.tiltTop = None
-		self.twist = 0.0
-		self.twistPathDefault = [Vector3(), Vector3(1.0)]
-
-	def __repr__(self):
-		"Get the string representation of this ExtrudeDerivation."
-		return '%s, %s' % ( self.interpolationDictionary, self.tiltTop )
-
-	def setToXMLElement(self, xmlElement):
-		"Set to the xmlElement."
-		self.radius = lineation.getRadiusComplex(self.radius, xmlElement)
-		self.tiltFollow = evaluate.getEvaluatedBooleanDefault(self.tiltFollow, 'tiltfollow', xmlElement)
-		self.tiltTop = evaluate.getVector3ByPrefix(self.tiltTop, 'tilttop', xmlElement)
-		self.maximumUnbuckling = evaluate.getEvaluatedFloatDefault(self.maximumUnbuckling, 'maximumUnbuckling', xmlElement)
-		self.interpolationDictionary['scale'] = Interpolation().getByPrefixZ(self.scalePathDefault, 'scale', xmlElement)
-		if len(self.target) < 1:
-			self.target = evaluate.getTransformedPathsByKey('target', xmlElement)
+		self.radius = lineation.getRadiusComplex(complex(), xmlElement)
+		self.tiltFollow = evaluate.getEvaluatedBoolean(True, 'tiltFollow', xmlElement)
+		self.tiltTop = evaluate.getVector3ByPrefix(None, 'tiltTop', xmlElement)
+		self.maximumUnbuckling = evaluate.getEvaluatedFloat(5.0, 'maximumUnbuckling', xmlElement)
+		scalePathDefault = [Vector3(1.0, 1.0, 0.0), Vector3(1.0, 1.0, 1.0)]
+		self.interpolationDictionary['scale'] = Interpolation().getByPrefixZ(scalePathDefault, 'scale', xmlElement)
+		self.target = evaluate.getTransformedPathsByKey([], 'target', xmlElement)
 		if self.tiltTop == None:
-			self.interpolationDictionary['offset'] = Interpolation().getByPrefixZ(self.offsetPathDefault, '', xmlElement)
-			self.interpolationDictionary['tilt'] = Interpolation().getByPrefixZ(self.tiltPathDefault, 'tilt', xmlElement)
+			offsetPathDefault = [Vector3(), Vector3(0.0, 0.0, 1.0)]
+			self.interpolationDictionary['offset'] = Interpolation().getByPrefixZ(offsetPathDefault, '', xmlElement)
+			tiltPathDefault = [Vector3(), Vector3(0.0, 0.0, 1.0)]
+			self.interpolationDictionary['tilt'] = Interpolation().getByPrefixZ(tiltPathDefault, 'tilt', xmlElement)
 			for point in self.interpolationDictionary['tilt'].path:
 				point.x = math.radians(point.x)
 				point.y = math.radians(point.y)
 		else:
-			self.interpolationDictionary['offset'] = Interpolation().getByPrefixAlong(self.offsetAlongDefault, '', xmlElement)
-		self.twist = evaluate.getEvaluatedFloatDefault(self.twist, 'twist', xmlElement )
-		if self.twist != 0.0:
-			self.twistPathDefault = [Vector3(), Vector3(1.0, self.twist) ]
+			offsetAlongDefault = [Vector3(), Vector3(1.0, 0.0, 0.0)]
+			self.interpolationDictionary['offset'] = Interpolation().getByPrefixAlong(offsetAlongDefault, '', xmlElement)
+		self.twist = evaluate.getEvaluatedFloat(0.0, 'twist', xmlElement )
+		self.twistPathDefault = [Vector3(), Vector3(1.0, self.twist) ]
+		self.xmlElement = xmlElement
 		insertTwistPortions(self, xmlElement)
+
+	def __repr__(self):
+		'Get the string representation of this ExtrudeDerivation.'
+		return str(self.__dict__)
 
 
 class Interpolation:
-	"Class to interpolate a path."
+	'Class to interpolate a path.'
 	def __init__(self):
-		"Set index."
+		'Set index.'
 		self.interpolationIndex = 0
 
+	def __repr__(self):
+		'Get the string representation of this Interpolation.'
+		return str(self.__dict__)
+
 	def getByDistances(self):
-		"Get by distances."
+		'Get by distances.'
 		beginDistance = self.distances[0]
 		self.interpolationLength = self.distances[-1] - beginDistance
-		self.close = abs( 0.000001 * self.interpolationLength )
+		self.close = abs(0.000001 * self.interpolationLength)
 		self.portionDirections = []
-		oldDistance = beginDistance - self.interpolationLength
+		oldDistance = -self.interpolationLength # so the difference should not be close
 		for distance in self.distances:
-			portionDirection = PortionDirection( distance / self.interpolationLength )
-			if abs( distance - oldDistance ) < self.close:
+			deltaDistance = distance - beginDistance
+			portionDirection = PortionDirection(deltaDistance / self.interpolationLength)
+			if abs(deltaDistance - oldDistance) < self.close:
 				portionDirection.directionReversed = True
-			self.portionDirections.append( portionDirection )
-			oldDistance = distance
+			self.portionDirections.append(portionDirection)
+			oldDistance = deltaDistance
 		return self
 
 	def getByPrefixAlong(self, path, prefix, xmlElement):
-		"Get interpolation from prefix and xml element along the path."
+		'Get interpolation from prefix and xml element along the path.'
 		if len(path) < 2:
 			print('Warning, path is too small in evaluate in Interpolation.')
 			return
@@ -336,7 +366,7 @@ class Interpolation:
 		return self.getByDistances()
 
 	def getByPrefixX(self, path, prefix, xmlElement):
-		"Get interpolation from prefix and xml element in the z direction."
+		'Get interpolation from prefix and xml element in the z direction.'
 		if len(path) < 2:
 			print('Warning, path is too small in evaluate in Interpolation.')
 			return
@@ -350,7 +380,7 @@ class Interpolation:
 		return self.getByDistances()
 
 	def getByPrefixZ(self, path, prefix, xmlElement):
-		"Get interpolation from prefix and xml element in the z direction."
+		'Get interpolation from prefix and xml element in the z direction.'
 		if len(path) < 2:
 			print('Warning, path is too small in evaluate in Interpolation.')
 			return
@@ -364,7 +394,7 @@ class Interpolation:
 		return self.getByDistances()
 
 	def getComparison( self, first, second ):
-		"Compare the first with the second."
+		'Compare the first with the second.'
 		if abs( second - first ) < self.close:
 			return 0
 		if second > first:
@@ -372,12 +402,12 @@ class Interpolation:
 		return - 1
 
 	def getComplexByPortion( self, portionDirection ):
-		"Get complex from z portion."
+		'Get complex from z portion.'
 		self.setInterpolationIndexFromTo( portionDirection )
-		return self.oneMinusInnerPortion * self.startVertex.dropAxis(2) + self.innerPortion * self.endVertex.dropAxis(2)
+		return self.oneMinusInnerPortion * self.startVertex.dropAxis() + self.innerPortion * self.endVertex.dropAxis()
 
 	def getInnerPortion(self):
-		"Get inner x portion."
+		'Get inner x portion.'
 		fromDistance = self.distances[ self.interpolationIndex ]
 		innerLength = self.distances[ self.interpolationIndex + 1 ] - fromDistance
 		if abs( innerLength ) == 0.0:
@@ -385,17 +415,17 @@ class Interpolation:
 		return ( self.absolutePortion - fromDistance ) / innerLength
 
 	def getVector3ByPortion( self, portionDirection ):
-		"Get vector3 from z portion."
+		'Get vector3 from z portion.'
 		self.setInterpolationIndexFromTo( portionDirection )
 		return self.oneMinusInnerPortion * self.startVertex + self.innerPortion * self.endVertex
 
 	def getYByPortion( self, portionDirection ):
-		"Get y from x portion."
+		'Get y from x portion.'
 		self.setInterpolationIndexFromTo( portionDirection )
 		return self.oneMinusInnerPortion * self.startVertex.y + self.innerPortion * self.endVertex.y
 
 	def setInterpolationIndex( self, portionDirection ):
-		"Set the interpolation index."
+		'Set the interpolation index.'
 		self.absolutePortion = self.distances[0] + self.interpolationLength * portionDirection.portion
 		interpolationIndexes = range( 0, len( self.distances ) - 1 )
 		if portionDirection.directionReversed:
@@ -407,7 +437,7 @@ class Interpolation:
 				return
 
 	def setInterpolationIndexFromTo( self, portionDirection ):
-		"Set the interpolation index, the start vertex and the end vertex."
+		'Set the interpolation index, the start vertex and the end vertex.'
 		self.setInterpolationIndex( portionDirection )
 		self.innerPortion = self.getInnerPortion()
 		self.oneMinusInnerPortion = 1.0 - self.innerPortion
@@ -416,12 +446,12 @@ class Interpolation:
 
 
 class PortionDirection:
-	"Class to hold a portion and direction."
+	'Class to hold a portion and direction.'
 	def __init__( self, portion ):
-		"Initialize."
+		'Initialize.'
 		self.directionReversed = False
 		self.portion = portion
 
 	def __repr__(self):
-		"Get the string representation of this PortionDirection."
+		'Get the string representation of this PortionDirection.'
 		return '%s: %s' % ( self.portion, self.directionReversed )

@@ -14,7 +14,7 @@ from fabmetheus_utilities import settings
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getNewMouseTool():
@@ -28,7 +28,7 @@ class ZoomIn( MouseToolBase ):
 		"Print line text and connection line."
 		scaleSetting = self.window.repository.scale
 		scaleSetting.value *= self.getMultiplier()
-		delta = complex( float( event.x ) / float( self.window.screenSize.real ), float( event.y ) / float( self.window.screenSize.imag ) ) - self.window.canvasScreenCenter
+		delta = complex( float(event.x) / float( self.window.screenSize.real ), float(event.y) / float( self.window.screenSize.imag ) ) - self.window.canvasScreenCenter
 		delta *= 1.0 - 1.0 / self.getMultiplier()
 		scrollPaneCenter = self.window.getScrollPaneCenter() + delta
 		self.window.updateNewDestroyOld( scrollPaneCenter )

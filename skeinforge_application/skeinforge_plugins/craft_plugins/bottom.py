@@ -1,19 +1,21 @@
 #! /usr/bin/env python
 """
 This page is in the table of contents.
-Bottom converts the svg slices into gcode extrusion layers, optionally bottom with some gcode commands.
-
-The bottom manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Bottom
+Bottom sets the bottom of the carving to the defined altitude.
 
 ==Operation==
 The default 'Activate Bottom' checkbox is on.  When it is on, the functions described below will work, when it is off, the functions will not be called.
 
 ==Settings==
+===Additional Height over Layer Thickness===
+Default is half.
+
+The layers will start at the altitude plus the 'Additional Height over Layer Thickness' times the layer thickness.  The default value of half means that the bottom layer is at the height of the bottom slice, because each slice is made through the middle of each layer.  Raft expects the layers to start at an additional half layer thickness.  You should only change 'Additional Height over Layer Thickness' if you are manipulating the skeinforge output with your own program which does not use the raft tool.
+
 ===Altitude===
 Default is zero.
 
-Defines the altitude of the bottom of the model.  The bottom slice have a z of the altitude plus half the layer thickness.
+Defines the altitude of the bottom of the model.  The bottom slice has a z of the altitude plus the 'Additional Height over Layer Thickness' times the layer thickness.
 
 ===SVG Viewer===
 Default is webbrowser.
@@ -23,29 +25,10 @@ If the 'SVG Viewer' is set to the default 'webbrowser', the scalable vector grap
 ==Examples==
 The following examples bottom the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and bottom.py.
 
-
 > python bottom.py
 This brings up the bottom dialog.
 
-
 > python bottom.py Screw Holder Bottom.stl
-The bottom tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The bottom tool has created the file:
-.. Screw Holder Bottom_bottom.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import bottom
->>> bottom.main()
-This brings up the bottom dialog.
-
-
->>> bottom.writeOutput('Screw Holder Bottom.stl')
 The bottom tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -60,12 +43,15 @@ import __init__
 
 from datetime import date
 from fabmetheus_utilities.fabmetheus_tools import fabmetheus_interpret
+from fabmetheus_utilities.svg_reader import SVGReader
+from fabmetheus_utilities.vector3 import Vector3
 from fabmetheus_utilities.xml_simple_reader import XMLSimpleReader
 from fabmetheus_utilities import archive
 from fabmetheus_utilities import euclidean
 from fabmetheus_utilities import gcodec
 from fabmetheus_utilities import settings
 from fabmetheus_utilities import svg_writer
+from fabmetheus_utilities import xml_simple_writer
 from skeinforge_application.skeinforge_utilities import skeinforge_craft
 from skeinforge_application.skeinforge_utilities import skeinforge_polyfile
 from skeinforge_application.skeinforge_utilities import skeinforge_profile
@@ -76,8 +62,8 @@ import time
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
-__date__ = "$Date: 2008/28/04 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText(fileName, svgText='', repository=None):
@@ -95,62 +81,25 @@ def getCraftedTextFromText(fileName, svgText, repository=None):
 	return BottomSkein().getCraftedGcode(fileName, repository, svgText)
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return BottomRepository()
 
-def getSliceElements(xmlElement):
-	"Get the slice elements."
-	gElements = xmlElement.getChildrenWithClassNameRecursively('g')
-	sliceElements = []
-	for gElement in gElements:
-		if 'id' in gElement.attributeDictionary:
-			idValue = gElement.attributeDictionary['id'].strip()
-			if idValue.startswith('z:'):
-				sliceElements.append(gElement)
-	return sliceElements
-
-def getSliceElementZ(sliceElement):
-	"Get the slice element z."
-	idValue = sliceElement.attributeDictionary['id'].strip()
-	return float(idValue[len('z:') :].strip())
-
-def setSliceElementZ(decimalPlacesCarried, sliceElement, sliceElementIndex, z):
-	"Set the slice element z."
-	roundedZ = euclidean.getRoundedToPlacesString(decimalPlacesCarried, z)
-	idValue = 'z:%s' % roundedZ
-	sliceElement.attributeDictionary['id'] = idValue
-	textElement = sliceElement.getFirstChildWithClassName('text')
-	textElement.text = 'Layer %s, %s' % (sliceElementIndex, idValue)
-
-def writeOutput(fileName=''):
-	"Bottom the carving of a gcode file."
-	print('')
-	print('The bottom tool is parsing the file:')
-	print(os.path.basename(fileName))
-	print('')
-	startTime = time.time()
-	fileNameSuffix = fileName[: fileName.rfind('.')] + '_bottom.svg'
-	craftText = skeinforge_craft.getChainText(fileName, 'bottom')
-	if craftText == '':
-		return
-	archive.writeFileText(fileNameSuffix, craftText)
-	print('')
-	print('The bottom tool has created the file:')
-	print(fileNameSuffix)
-	print('')
-	print('It took %s to craft the file.' % euclidean.getDurationString(time.time() - startTime))
-	repository = BottomRepository()
-	settings.getReadRepository(repository)
-	settings.openSVGPage(fileNameSuffix, repository.svgViewer.value)
+def writeOutput(fileName, shouldAnalyze=True):
+	'Bottom the carving.'
+	skeinforge_craft.writeSVGTextWithNounMessage(fileName, BottomRepository(), shouldAnalyze)
 
 
 class BottomRepository:
 	"A class to handle the bottom settings."
 	def __init__(self):
 		"Set the default settings, execute title & settings fileName."
-		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.bottom.html', self )
-		self.fileNameInput = settings.FileNameInput().getFromFileName(fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Bottom', self, '')
-		self.activateBottom = settings.BooleanSetting().getFromValue('Activate Bottom:', self, True )
+		skeinforge_profile.addListsToCraftTypeRepository(
+			'skeinforge_application.skeinforge_plugins.craft_plugins.bottom.html', self)
+		self.fileNameInput = settings.FileNameInput().getFromFileName(
+			fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Bottom', self, '')
+		self.activateBottom = settings.BooleanSetting().getFromValue('Activate Bottom', self, True)
+		self.additionalHeightOverLayerThickness = settings.FloatSpin().getFromValue(
+			0.0, 'Additional Height over Layer Thickness (ratio):', self, 1.0, 0.5)
 		self.altitude = settings.FloatSpin().getFromValue(-1.0, 'Altitude (mm):', self, 1.0, 0.0)
 		self.svgViewer = settings.StringSetting().getFromValue('SVG Viewer:', self, 'webbrowser')
 		self.executeTitle = 'Bottom'
@@ -166,25 +115,34 @@ class BottomSkein:
 	"A class to bottom a skein of extrusions."
 	def getCraftedGcode(self, fileName, repository, svgText):
 		"Parse svgText and store the bottom svgText."
-		xmlParser = XMLSimpleReader(fileName, None, svgText)
-		root = xmlParser.getRoot()
-		sliceElements = getSliceElements(root)
-		sliceDictionary = svg_writer.getSliceDictionary(root)
-		decimalPlacesCarried = int(sliceDictionary['decimalPlacesCarried'])
-		layerThickness = float(sliceDictionary['layerThickness'])
-		procedures = sliceDictionary['procedureDone'].split(',')
-		procedures.append('bottom')
-		sliceDictionary['procedureDone'] = ','.join(procedures)
+		svgReader = SVGReader()
+		svgReader.parseSVG('', svgText)
+		if svgReader.sliceDictionary == None:
+			print('Warning, nothing will be done because the sliceDictionary could not be found getCraftedGcode in preface.')
+			return ''
+		decimalPlacesCarried = int(svgReader.sliceDictionary['decimalPlacesCarried'])
+		layerThickness = float(svgReader.sliceDictionary['layerThickness'])
+		perimeterWidth = float(svgReader.sliceDictionary['perimeterWidth'])
+		rotatedLoopLayers = svgReader.rotatedLoopLayers
 		zMinimum = 987654321.0
-		for sliceElement in sliceElements:
-			zMinimum = min(getSliceElementZ(sliceElement), zMinimum)
-		deltaZ = repository.altitude.value + 0.5 * layerThickness - zMinimum
-		for sliceElementIndex, sliceElement in enumerate(sliceElements):
-			z = getSliceElementZ(sliceElement) + deltaZ
-			setSliceElementZ(decimalPlacesCarried, sliceElement, sliceElementIndex, z)
-		output = cStringIO.StringIO()
-		root.addXML(0, output)
-		return output.getvalue()
+		for rotatedLoopLayer in rotatedLoopLayers:
+			zMinimum = min(rotatedLoopLayer.z, zMinimum)
+		deltaZ = repository.altitude.value + repository.additionalHeightOverLayerThickness.value * layerThickness - zMinimum
+		for rotatedLoopLayer in rotatedLoopLayers:
+			rotatedLoopLayer.z += deltaZ
+		cornerMaximum = Vector3(-912345678.0, -912345678.0, -912345678.0)
+		cornerMinimum = Vector3(912345678.0, 912345678.0, 912345678.0)
+		svg_writer.setSVGCarvingCorners(cornerMaximum, cornerMinimum, layerThickness, rotatedLoopLayers)
+		svgWriter = svg_writer.SVGWriter(
+			True,
+			cornerMaximum,
+			cornerMinimum,
+			decimalPlacesCarried,
+			layerThickness,
+			perimeterWidth)
+		commentElement = svg_writer.getCommentElement(svgReader.root)
+		procedureNameString = svgReader.sliceDictionary['procedureName'] + ',bottom'
+		return svgWriter.getReplacedSVGTemplate(fileName, procedureNameString, rotatedLoopLayers, commentElement)
 
 
 def main():

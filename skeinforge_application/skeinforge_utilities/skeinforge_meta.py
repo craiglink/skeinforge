@@ -10,12 +10,13 @@ import __init__
 from fabmetheus_utilities import archive
 from fabmetheus_utilities import gcodec
 from fabmetheus_utilities import settings
+from skeinforge_application.skeinforge_utilities import skeinforge_profile
 import os
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getPluginFileNames():
@@ -24,10 +25,10 @@ def getPluginFileNames():
 
 def getPluginsDirectoryPath():
 	"Get the plugins directory path."
-	return archive.getAbsoluteFolderPath( os.path.dirname( __file__ ), os.path.join('skeinforge_plugins', 'meta_plugins') )
+	return archive.getSkeinforgePluginsPath('meta_plugins')
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return MetaRepository()
 
 
@@ -35,6 +36,6 @@ class MetaRepository:
 	"A class to handle the meta settings."
 	def __init__(self):
 		"Set the default settings, execute title & settings fileName."
-		settings.addListsToRepository('skeinforge_application.skeinforge_utilities.skeinforge_meta.html', None, self )
+		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_utilities.skeinforge_meta.html', self)
 		importantFileNames = ['polyfile']
 		settings.getRadioPluginsAddPluginFrame( getPluginsDirectoryPath(), importantFileNames, getPluginFileNames(), self )

@@ -11,7 +11,7 @@ When selected, the layer template will be added to the svg output, which adds ja
 When off, no controls will be added, the svg output will only include the fabrication paths.  So 'Add Layer Template to SVG' should be deselected when the svg will be used by other software, like Inkscape.
 
 ===Extra Decimal Places===
-Default is one.
+Default is two.
 
 Defines the number of extra decimal places export will output compared to the number of decimal places in the layer thickness.  The higher the 'Extra Decimal Places', the more significant figures the output numbers will have.
 
@@ -60,29 +60,10 @@ If the 'SVG Viewer' is set to the default 'webbrowser', the scalable vector grap
 ==Examples==
 The following examples cleave the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and cleave.py.
 
-
 > python cleave.py
 This brings up the cleave dialog.
 
-
 > python cleave.py Screw Holder Bottom.stl
-The cleave tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The cleave tool has created the file:
-.. Screw Holder Bottom_cleave.svg
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import cleave
->>> cleave.main()
-This brings up the cleave dialog.
-
-
->>> cleave.writeOutput('Screw Holder Bottom.stl')
 The cleave tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -115,8 +96,8 @@ import time
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
-__date__ = "$Date: 2008/02/05 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, gcodeText = '', repository=None):
@@ -134,11 +115,11 @@ def getCraftedText( fileName, gcodeText = '', repository=None):
 	return CleaveSkein().getCarvedSVG( carving, fileName, repository )
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return CleaveRepository()
 
-def writeOutput(fileName=''):
-	"Cleave a GNU Triangulated Surface file.  If no fileName is specified, cleave the first GNU Triangulated Surface file in this folder."
+def writeOutput(fileName, shouldAnalyze=True):
+	"Cleave a GNU Triangulated Surface file."
 	startTime = time.time()
 	print('File ' + archive.getSummarizedFileName(fileName) + ' is being cleaved.')
 	repository = CleaveRepository()
@@ -153,7 +134,8 @@ def writeOutput(fileName=''):
 	archive.writeFileText( suffixFileName, cleaveGcode )
 	print('The cleaved file is saved as ' + archive.getSummarizedFileName(suffixFileName) )
 	print('It took %s to cleave the file.' % euclidean.getDurationString( time.time() - startTime ) )
-	settings.openSVGPage( suffixFileName, repository.svgViewer.value )
+	if shouldAnalyze:
+		settings.openSVGPage( suffixFileName, repository.svgViewer.value )
 
 
 class CleaveRepository:
@@ -163,7 +145,7 @@ class CleaveRepository:
 		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.cleave.html', self )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getTranslatorFileTypeTuples(), 'Open File to be Cleaved', self, '')
 		self.addLayerTemplateToSVG = settings.BooleanSetting().getFromValue('Add Layer Template to SVG', self, True)
-		self.extraDecimalPlaces = settings.FloatSpin().getFromValue(0.0, 'Extra Decimal Places (float):', self, 2.0, 1.0)
+		self.extraDecimalPlaces = settings.FloatSpin().getFromValue(0.0, 'Extra Decimal Places (float):', self, 3.0, 2.0)
 		self.importCoarseness = settings.FloatSpin().getFromValue( 0.5, 'Import Coarseness (ratio):', self, 2.0, 1.0 )
 		self.layerThickness = settings.FloatSpin().getFromValue( 0.1, 'Layer Thickness (mm):', self, 1.0, 0.4 )
 		self.layersFrom = settings.IntSpin().getFromValue( 0, 'Layers From (index):', self, 20, 0 )
@@ -173,7 +155,6 @@ class CleaveRepository:
 		self.correctMesh = settings.Radio().getFromRadio( importLatentStringVar, 'Correct Mesh', self, True )
 		self.unprovenMesh = settings.Radio().getFromRadio( importLatentStringVar, 'Unproven Mesh', self, False )
 		self.perimeterWidth = settings.FloatSpin().getFromValue( 0.4, 'Perimeter Width (mm):', self, 4.0, 2.0 )
-		settings.LabelSeparator().getFromRepository(self)
 		self.svgViewer = settings.StringSetting().getFromValue('SVG Viewer:', self, 'webbrowser')
 		settings.LabelSeparator().getFromRepository(self)
 		self.executeTitle = 'Cleave'
@@ -195,14 +176,20 @@ class CleaveSkein:
 		importRadius = 0.5 * repository.importCoarseness.value * abs( perimeterWidth )
 		carving.setCarveImportRadius( max( importRadius, 0.01 * layerThickness ) )
 		carving.setCarveIsCorrectMesh( repository.correctMesh.value )
-		rotatedBoundaryLayers = carving.getCarveRotatedBoundaryLayers()
-		if len( rotatedBoundaryLayers ) < 1:
-			print('There are no slices for the model, this could be because the model is too small.')
+		rotatedLoopLayers = carving.getCarveRotatedBoundaryLayers()
+		if len( rotatedLoopLayers ) < 1:
+			print('Warning, there are no slices for the model, this could be because the model is too small for the Layer Thickness.')
 			return ''
 		layerThickness = carving.getCarveLayerThickness()
 		decimalPlacesCarried = euclidean.getDecimalPlacesCarried(repository.extraDecimalPlaces.value, layerThickness)
-		svgWriter = svg_writer.SVGWriter(repository.addLayerTemplateToSVG.value, carving, decimalPlacesCarried, perimeterWidth)
-		truncatedRotatedBoundaryLayers = svg_writer.getTruncatedRotatedBoundaryLayers(repository, rotatedBoundaryLayers)
+		svgWriter = svg_writer.SVGWriter(
+			repository.addLayerTemplateToSVG.value,
+			carving.getCarveCornerMaximum(),
+			carving.getCarveCornerMinimum(),
+			decimalPlacesCarried,
+			carving.getCarveLayerThickness(),
+			perimeterWidth)
+		truncatedRotatedBoundaryLayers = svg_writer.getTruncatedRotatedBoundaryLayers(repository, rotatedLoopLayers)
 		return svgWriter.getReplacedSVGTemplate( fileName, 'cleave', truncatedRotatedBoundaryLayers, carving.getFabmetheusXML())
 
 
