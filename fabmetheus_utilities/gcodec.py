@@ -32,7 +32,7 @@ import traceback
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def addLineAndNewlineIfNecessary(line, output):
@@ -43,9 +43,15 @@ def addLineAndNewlineIfNecessary(line, output):
 	if not line.endswith('\n'):
 		output.write('\n')
 
+def addLinesToCString(cString, lines):
+	'Add lines which have something to cStringIO.'
+	for line in lines:
+		if line != '':
+			cString.write(line + '\n')
+
 def getArcDistance(relativeLocation, splitLine):
 	'Get arc distance.'
-	halfPlaneLineDistance = 0.5 * abs(relativeLocation.dropAxis(2))
+	halfPlaneLineDistance = 0.5 * abs(relativeLocation.dropAxis())
 	radius = getDoubleFromCharacterSplitLine('R', splitLine)
 	if radius == None:
 		iFloat = getDoubleFromCharacterSplitLine('I', splitLine)
@@ -140,9 +146,7 @@ def getLocationFromSplitLine(oldLocation, splitLine):
 
 def getSplitLineBeforeBracketSemicolon(line):
 	'Get the split line before a bracket or semicolon.'
-	semicolonIndex = line.find(';')
-	if semicolonIndex >= 0:
-		line = line[ : semicolonIndex ]
+	line = line.split(';')[0]
 	bracketIndex = line.find('(')
 	if bracketIndex > 0:
 		return line[: bracketIndex].split()
@@ -171,15 +175,15 @@ def isProcedureDone(gcodeText, procedure):
 		withoutBracketsEqualTabQuotes = getWithoutBracketsEqualTab(line).replace('"', '').replace("'", '')
 		splitLine = getWithoutBracketsEqualTab( withoutBracketsEqualTabQuotes ).split()
 		firstWord = getFirstWord(splitLine)
-		if firstWord == 'procedureDone':
+		if firstWord == 'procedureName':
 			if splitLine[1].find(procedure) != -1:
 				return True
 		elif firstWord == 'extrusionStart':
 			return False
 		procedureIndex = line.find(procedure)
 		if procedureIndex != -1:
-			if 'procedureDone' in splitLine:
-				nextIndex = splitLine.index('procedureDone') + 1
+			if 'procedureName' in splitLine:
+				nextIndex = splitLine.index('procedureName') + 1
 				if nextIndex < len(splitLine):
 					nextWordSplit = splitLine[nextIndex].split(',')
 					if procedure in nextWordSplit:
@@ -191,6 +195,13 @@ def isProcedureDoneOrFileIsEmpty(gcodeText, procedure):
 	if gcodeText == '':
 		return True
 	return isProcedureDone(gcodeText, procedure)
+
+def getFirstWordIndexReverse(firstWord, lines, startIndex):
+	'Parse gcode in reverse order until the first word if there is one, otherwise return -1.'
+	for lineIndex in xrange(len(lines) - 1, startIndex - 1, -1):
+		if firstWord == getFirstWord(getSplitLineBeforeBracketSemicolon(lines[lineIndex])):
+			return lineIndex
+	return -1
 
 def isThereAFirstWord(firstWord, lines, startIndex):
 	'Parse gcode until the first word if there is one.'
@@ -206,8 +217,8 @@ class BoundingRectangle:
 	'A class to get the corners of a gcode text.'
 	def getFromGcodeLines(self, lines, radius):
 		'Parse gcode text and get the minimum and maximum corners.'
-		self.cornerMaximum = complex(-999999999.0, -999999999.0)
-		self.cornerMinimum = complex(999999999.0, 999999999.0)
+		self.cornerMaximum = complex(-987654321.0, -987654321.0)
+		self.cornerMinimum = complex(987654321.0, 987654321.0)
 		self.oldLocation = None
 		self.cornerRadius = complex(radius, radius)
 		for line in lines:
@@ -223,12 +234,12 @@ class BoundingRectangle:
 		splitLine = getSplitLineBeforeBracketSemicolon(line)
 		firstWord = getFirstWord(splitLine)
 		if firstWord == '(<boundaryPoint>':
-			locationComplex = getLocationFromSplitLine(None, splitLine).dropAxis(2)
+			locationComplex = getLocationFromSplitLine(None, splitLine).dropAxis()
 			self.cornerMaximum = euclidean.getMaximum(self.cornerMaximum, locationComplex)
 			self.cornerMinimum = euclidean.getMinimum(self.cornerMinimum, locationComplex)
 		elif firstWord == 'G1':
 			location = getLocationFromSplitLine(self.oldLocation, splitLine)
-			locationComplex = location.dropAxis(2)
+			locationComplex = location.dropAxis()
 			self.cornerMaximum = euclidean.getMaximum(self.cornerMaximum, locationComplex + self.cornerRadius)
 			self.cornerMinimum = euclidean.getMinimum(self.cornerMinimum, locationComplex - self.cornerRadius)
 			self.oldLocation = location
@@ -241,10 +252,10 @@ class DistanceFeedRate:
 		self.decimalPlacesCarried = 3
 		self.output = cStringIO.StringIO()
 
-	def addGcodeFromFeedRateThreadZ(self, feedRateMinute, thread, z):
+	def addGcodeFromFeedRateThreadZ(self, feedRateMinute, thread, travelFeedRateMinute, z):
 		'Add a thread to the output.'
 		if len(thread) > 0:
-			self.addGcodeMovementZWithFeedRate(feedRateMinute, thread[0], z)
+			self.addGcodeMovementZWithFeedRate(travelFeedRateMinute, thread[0], z)
 		else:
 			print('zero length vertex positions array which was skipped over, this should never happen.')
 		if len(thread) < 2:
@@ -261,7 +272,7 @@ class DistanceFeedRate:
 		euclidean.addSurroundingLoopBeginning(self, loop, z)
 		self.addPerimeterBlock(loop, z)
 		self.addLine('(</boundaryPerimeter>)')
-		self.addLine('(</surroundingLoop>)')
+		self.addLine('(</nestedRing>)')
 
 	def addGcodeFromThreadZ(self, thread, z):
 		'Add a thread to the output.'
@@ -293,8 +304,7 @@ class DistanceFeedRate:
 
 	def addLines(self, lines):
 		'Add lines of text to the output.'
-		for line in lines:
-			self.addLine(line)
+		addLinesToCString(self.output, lines)
 
 	def addLinesSetAbsoluteDistanceMode(self, lines):
 		'Add lines of text to the output and ensure the absolute mode is set.'
@@ -305,7 +315,7 @@ class DistanceFeedRate:
 		absoluteDistanceMode = True
 		self.addLine('(<alteration>)')
 		for line in lines:
-			splitLine = line.split()
+			splitLine = getSplitLineBeforeBracketSemicolon(line)
 			firstWord = getFirstWord(splitLine)
 			if firstWord == 'G90':
 				absoluteDistanceMode = True
@@ -332,8 +342,12 @@ class DistanceFeedRate:
 		self.addLine('(</perimeter>)') # Indicate that a perimeter is beginning.
 
 	def addTagBracketedLine(self, tagName, value):
-		'Add a begin tag, balue and end tag.'
+		'Add a begin tag, value and end tag.'
 		self.addLine('(<%s> %s </%s>)' % (tagName, value, tagName))
+
+	def addTagRoundedLine(self, tagName, value):
+		'Add a begin tag, rounded value and end tag.'
+		self.addLine('(<%s> %s </%s>)' % (tagName, self.getRounded(value), tagName))
 
 	def getBoundaryLine(self, location):
 		'Get boundary gcode line.'

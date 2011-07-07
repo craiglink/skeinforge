@@ -18,6 +18,7 @@ import __init__
 from fabmetheus_utilities import archive
 from fabmetheus_utilities import gcodec
 from fabmetheus_utilities import settings
+from skeinforge_application.skeinforge_utilities import skeinforge_profile
 import cStringIO
 import os
 import sys
@@ -25,11 +26,11 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return ScalableVectorGraphicsRepository()
 
 def parseLineReplace( firstWordTable, line, output ):
@@ -44,8 +45,8 @@ class ScalableVectorGraphicsRepository:
 	"A class to handle the export settings."
 	def __init__(self):
 		"Set the default settings, execute title & settings fileName."
-		settings.addListsToRepository(
-			'skeinforge_application.skeinforge_plugins.analyze_plugins.export_canvas_plugins.scalable_vector_graphics.html', None, self )
+		skeinforge_profile.addListsToCraftTypeRepository(
+			'skeinforge_application.skeinforge_plugins.analyze_plugins.export_canvas_plugins.scalable_vector_graphics.html', self)
 		self.fileExtension = settings.StringSetting().getFromValue('File Extension:', self, '')
 		self.svgViewer = settings.StringSetting().getFromValue('SVG Viewer:', self, 'webbrowser')
 
@@ -60,7 +61,7 @@ class ScalableVectorGraphicsRepository:
 		color = self.canvas.itemcget( objectIDNumber, 'fill')
 		width = self.canvas.itemcget( objectIDNumber, 'width')
 		line = '<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="%s" stroke-width="%spx"/>\n' % ( xBegin, yBegin, xEnd, yEnd, color, width )
-		canvasLinesOutput.write( line + '\n')
+		canvasLinesOutput.write(line + '\n')
 
 	def execute(self):
 		"Export the canvas as an svg file."
@@ -94,8 +95,8 @@ class ScalableVectorGraphicsRepository:
 		print('')
 		if fileExtension == '':
 			print('Sending the shell command:')
-			print( shellCommand )
-			commandResult = os.system( shellCommand )
+			print(shellCommand)
+			commandResult = os.system(shellCommand)
 			if commandResult != 0:
 				print('It may be that the system could not find the %s program.' % svgViewer )
 				print('If so, try installing the %s program or look for another svg viewer, like Netscape which can be found at:' % svgViewer )
@@ -104,8 +105,8 @@ class ScalableVectorGraphicsRepository:
 		convertedFileName = archive.getFilePathWithUnderscoredBasename( svgFilePath, '.' + fileExtension + '"')
 		shellCommand += ' ' + convertedFileName
 		print('Sending the shell command:')
-		print( shellCommand )
-		commandResult = os.system( shellCommand )
+		print(shellCommand)
+		commandResult = os.system(shellCommand)
 		if commandResult != 0:
 			print('The %s program could not convert the svg to the %s file format.' % ( svgViewer, fileExtension ) )
 			print('Try installing the %s program or look for another one, like Image Magick which can be found at:' % svgViewer )

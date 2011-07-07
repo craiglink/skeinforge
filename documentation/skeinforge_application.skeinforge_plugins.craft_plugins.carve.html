@@ -16,7 +16,7 @@
 Carve is a script to carve a shape into svg slice layers.<br>
  <br>
 The carve manual page is at:<br>
-<a href="http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Carve">http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Carve</a><br>
+<a href="http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Carve">http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Carve</a><br>
  <br>
 On the Arcol Blog a method of deriving the layer thickness is posted.  That article "Machine Calibrating" is at:<br>
 <a href="http://blog.arcol.hu/?p=157">http://blog.arcol.hu/?p=157</a><br>
@@ -24,10 +24,9 @@ On the Arcol Blog a method of deriving the layer thickness is posted.  That arti
 <br />
 <a href="#Settings">Settings</a><br />
 &nbsp;&nbsp;<a href="#Add Layer Template to SVG">Add Layer Template to SVG</a><br />
-&nbsp;&nbsp;<a href="#Bridge Thickness Multiplier">Bridge Thickness Multiplier</a><br />
 &nbsp;&nbsp;<a href="#Extra Decimal Places">Extra Decimal Places</a><br />
 &nbsp;&nbsp;<a href="#Import Coarseness">Import Coarseness</a><br />
-&nbsp;&nbsp;<a href="#Infill in Direction of Bridges">Infill in Direction of Bridges</a><br />
+&nbsp;&nbsp;<a href="#Infill in Direction of Bridge">Infill in Direction of Bridge</a><br />
 &nbsp;&nbsp;<a href="#Layer Thickness">Layer Thickness</a><br />
 &nbsp;&nbsp;<a href="#Layers">Layers</a><br />
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#Layers From">Layers From</a><br />
@@ -50,15 +49,9 @@ When selected, the layer template will be added to the svg output, which adds ja
  <br>
 When off, no controls will be added, the svg output will only include the fabrication paths.  So 'Add Layer Template to SVG' should be deselected when the svg will be used by other software, like Inkscape.<br>
  <br>
-<a name="Bridge Thickness Multiplier" id="Bridge Thickness Multiplier"></a><h3>Bridge Thickness Multiplier</h3>
-
-Default is one.<br>
- <br>
-Defines the the ratio of the thickness on the bridge layers over the thickness of the typical non bridge layers.<br>
- <br>
 <a name="Extra Decimal Places" id="Extra Decimal Places"></a><h3>Extra Decimal Places</h3>
 
-Default is one.<br>
+Default is two.<br>
  <br>
 Defines the number of extra decimal places export will output compared to the number of decimal places in the layer thickness.  The higher the 'Extra Decimal Places', the more significant figures the output numbers will have.<br>
  <br>
@@ -68,11 +61,11 @@ Default is one.<br>
  <br>
 When a triangle mesh has holes in it, the triangle mesh slicer switches over to a slow algorithm that spans gaps in the mesh.  The higher the 'Import Coarseness' setting, the wider the gaps in the mesh it will span.  An import coarseness of one means it will span gaps of the perimeter width.<br>
  <br>
-<a name="Infill in Direction of Bridges" id="Infill in Direction of Bridges"></a><h3>Infill in Direction of Bridges</h3>
+<a name="Infill in Direction of Bridge" id="Infill in Direction of Bridge"></a><h3>Infill in Direction of Bridge</h3>
 
 Default is on.<br>
  <br>
-When selected, the infill will be in the direction of bridges across gaps, so that the fill will be able to span a bridge easier.<br>
+When selected, the infill will be in the direction of any bridge across a gap, so that the fill will be able to span a bridge easier.<br>
  <br>
 <a name="Layer Thickness" id="Layer Thickness"></a><h3>Layer Thickness</h3>
 
@@ -125,29 +118,10 @@ If the 'SVG Viewer' is set to the default 'webbrowser', the scalable vector grap
 
 The following examples carve the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and carve.py.<br>
  <br>
- <br>
 &gt; python carve.py<br>
 This brings up the carve dialog.<br>
  <br>
- <br>
 &gt; python carve.py Screw Holder Bottom.stl<br>
-The carve tool is parsing the file:<br>
-Screw Holder Bottom.stl<br>
-..<br>
-The carve tool has created the file:<br>
-.. Screw Holder Bottom_carve.svg<br>
- <br>
- <br>
-&gt; python<br>
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)<br>
-[GCC 4.2.1 (SUSE Linux)] on linux2<br>
-Type "help", "copyright", "credits" or "license" for more information.<br>
-&gt;&gt;&gt; import carve<br>
-&gt;&gt;&gt; carve.<a href="#-main">main</a>()<br>
-This brings up the carve dialog.<br>
- <br>
- <br>
-&gt;&gt;&gt; carve.<a href="#-writeOutput">writeOutput</a>('Screw Holder Bottom.stl')<br>
 The carve tool is parsing the file:<br>
 Screw Holder Bottom.stl<br>
 ..<br>
@@ -225,9 +199,9 @@ The carve tool has created the file:<br>
     
 <tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%"><dl><dt><a name="-getCraftedText"><strong>getCraftedText</strong></a>(fileName, gcodeText<font color="#909090">=''</font>, repository<font color="#909090">=None</font>)</dt><dd><tt>Get&nbsp;carved&nbsp;text.</tt></dd></dl>
- <dl><dt><a name="-getNewRepository"><strong>getNewRepository</strong></a>()</dt><dd><tt>Get&nbsp;the&nbsp;repository&nbsp;constructor.</tt></dd></dl>
+ <dl><dt><a name="-getNewRepository"><strong>getNewRepository</strong></a>()</dt><dd><tt>Get&nbsp;new&nbsp;repository.</tt></dd></dl>
  <dl><dt><a name="-main"><strong>main</strong></a>()</dt><dd><tt>Display&nbsp;the&nbsp;carve&nbsp;dialog.</tt></dd></dl>
- <dl><dt><a name="-writeOutput"><strong>writeOutput</strong></a>(fileName<font color="#909090">=''</font>)</dt><dd><tt>Carve&nbsp;a&nbsp;GNU&nbsp;Triangulated&nbsp;Surface&nbsp;file.</tt></dd></dl>
+ <dl><dt><a name="-writeOutput"><strong>writeOutput</strong></a>(fileName, shouldAnalyze<font color="#909090">=True</font>)</dt><dd><tt>Carve&nbsp;a&nbsp;GNU&nbsp;Triangulated&nbsp;Surface&nbsp;file.</tt></dd></dl>
 </td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#55aa55">
@@ -237,7 +211,7 @@ The carve tool has created the file:<br>
 <tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%"><strong>__author__</strong> = 'Enrique Perez (perez_enrique@yahoo.com)'<br>
 <strong>__date__</strong> = '$Date: 2008/02/05 $'<br>
-<strong>__license__</strong> = 'GPL 3.0'<br>
+<strong>__license__</strong> = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'<br>
 <strong>absolute_import</strong> = _Feature((2, 5, 0, 'alpha', 1), (2, 7, 0, 'alpha', 0), 16384)</td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#7799ee">

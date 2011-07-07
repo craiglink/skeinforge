@@ -16,7 +16,7 @@ Default is on.
 When selected, chop will add an extra layer at the very top of the object if the top of the object is more than half the layer thickness above the first slice.  This is so the cutting tool doesn't cut too deeply through the top of the object on its first pass.
 
 ===Extra Decimal Places===
-Default is one.
+Default is two.
 
 Defines the number of extra decimal places export will output compared to the number of decimal places in the layer thickness.  The higher the 'Extra Decimal Places', the more significant figures the output numbers will have.
 
@@ -65,29 +65,10 @@ If the 'SVG Viewer' is set to the default 'webbrowser', the scalable vector grap
 ==Examples==
 The following examples chop the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and chop.py.
 
-
 > python chop.py
 This brings up the chop dialog.
 
-
 > python chop.py Screw Holder Bottom.stl
-The chop tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The chop tool has created the file:
-.. Screw Holder Bottom_chop.svg
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import chop
->>> chop.main()
-This brings up the chop dialog.
-
-
->>> chop.writeOutput('Screw Holder Bottom.stl')
 The chop tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -120,8 +101,8 @@ import time
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
-__date__ = "$Date: 2008/02/05 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, gcodeText = '', repository=None):
@@ -139,10 +120,10 @@ def getCraftedText( fileName, gcodeText = '', repository=None):
 	return ChopSkein().getCarvedSVG( carving, fileName, repository )
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return ChopRepository()
 
-def writeOutput(fileName=''):
+def writeOutput(fileName, shouldAnalyze=True):
 	"Chop a GNU Triangulated Surface file.  If no fileName is specified, chop the first GNU Triangulated Surface file in this folder."
 	startTime = time.time()
 	print('File ' + archive.getSummarizedFileName(fileName) + ' is being chopped.')
@@ -158,7 +139,8 @@ def writeOutput(fileName=''):
 	archive.writeFileText( suffixFileName, chopGcode )
 	print('The chopped file is saved as ' + archive.getSummarizedFileName(suffixFileName) )
 	print('It took %s to chop the file.' % euclidean.getDurationString( time.time() - startTime ) )
-	settings.openSVGPage( suffixFileName, repository.svgViewer.value )
+	if shouldAnalyze:
+		settings.openSVGPage( suffixFileName, repository.svgViewer.value )
 
 
 class ChopRepository:
@@ -169,7 +151,7 @@ class ChopRepository:
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getTranslatorFileTypeTuples(), 'Open File to be Chopped', self, '')
 		self.addExtraTopLayerIfNecessary = settings.BooleanSetting().getFromValue('Add Extra Top Layer if Necessary', self, True )
 		self.addLayerTemplateToSVG = settings.BooleanSetting().getFromValue('Add Layer Template to SVG', self, True)
-		self.extraDecimalPlaces = settings.FloatSpin().getFromValue(0.0, 'Extra Decimal Places (float):', self, 2.0, 1.0)
+		self.extraDecimalPlaces = settings.FloatSpin().getFromValue(0.0, 'Extra Decimal Places (float):', self, 3.0, 2.0)
 		self.importCoarseness = settings.FloatSpin().getFromValue( 0.5, 'Import Coarseness (ratio):', self, 2.0, 1.0 )
 		self.layerThickness = settings.FloatSpin().getFromValue( 0.1, 'Layer Thickness (mm):', self, 1.0, 0.4 )
 		self.layersFrom = settings.IntSpin().getFromValue( 0, 'Layers From (index):', self, 20, 0 )
@@ -193,14 +175,14 @@ class ChopRepository:
 
 class ChopSkein:
 	"A class to chop a carving."
-	def addExtraTopLayerIfNecessary( self, carving, layerThickness, rotatedBoundaryLayers ):
+	def addExtraTopLayerIfNecessary( self, carving, layerThickness, rotatedLoopLayers ):
 		"Add extra top layer if necessary."
-		topRotatedBoundaryLayer = rotatedBoundaryLayers[-1]
+		topRotatedBoundaryLayer = rotatedLoopLayers[-1]
 		cuttingSafeHeight = topRotatedBoundaryLayer.z + 0.5001 * layerThickness
 		if cuttingSafeHeight > carving.getCarveCornerMaximum().z:
 			return
 		extraTopRotatedBoundaryLayer = topRotatedBoundaryLayer.getCopyAtZ( topRotatedBoundaryLayer.z + layerThickness )
-		rotatedBoundaryLayers.append( extraTopRotatedBoundaryLayer )
+		rotatedLoopLayers.append( extraTopRotatedBoundaryLayer )
 
 	def getCarvedSVG( self, carving, fileName, repository ):
 		"Parse gnu triangulated surface text and store the chopped gcode."
@@ -210,17 +192,23 @@ class ChopSkein:
 		importRadius = 0.5 * repository.importCoarseness.value * abs( perimeterWidth )
 		carving.setCarveImportRadius( max( importRadius, 0.01 * layerThickness ) )
 		carving.setCarveIsCorrectMesh( repository.correctMesh.value )
-		rotatedBoundaryLayers = carving.getCarveRotatedBoundaryLayers()
-		if len( rotatedBoundaryLayers ) < 1:
-			print('There are no slices for the model, this could be because the model is too small.')
+		rotatedLoopLayers = carving.getCarveRotatedBoundaryLayers()
+		if len( rotatedLoopLayers ) < 1:
+			print('Warning, there are no slices for the model, this could be because the model is too small for the Layer Thickness.')
 			return ''
 		if repository.addExtraTopLayerIfNecessary.value:
-			self.addExtraTopLayerIfNecessary( carving, layerThickness, rotatedBoundaryLayers )
-		rotatedBoundaryLayers.reverse()
+			self.addExtraTopLayerIfNecessary( carving, layerThickness, rotatedLoopLayers )
+		rotatedLoopLayers.reverse()
 		layerThickness = carving.getCarveLayerThickness()
 		decimalPlacesCarried = euclidean.getDecimalPlacesCarried(repository.extraDecimalPlaces.value, layerThickness)
-		svgWriter = svg_writer.SVGWriter(repository.addLayerTemplateToSVG.value, carving, decimalPlacesCarried, perimeterWidth)
-		truncatedRotatedBoundaryLayers = svg_writer.getTruncatedRotatedBoundaryLayers(repository, rotatedBoundaryLayers)
+		svgWriter = svg_writer.SVGWriter(
+			repository.addLayerTemplateToSVG.value,
+			carving.getCarveCornerMaximum(),
+			carving.getCarveCornerMinimum(),
+			decimalPlacesCarried,
+			carving.getCarveLayerThickness(),
+			perimeterWidth)
+		truncatedRotatedBoundaryLayers = svg_writer.getTruncatedRotatedBoundaryLayers(repository, rotatedLoopLayers)
 		return svgWriter.getReplacedSVGTemplate( fileName, 'chop', truncatedRotatedBoundaryLayers, carving.getFabmetheusXML())
 
 

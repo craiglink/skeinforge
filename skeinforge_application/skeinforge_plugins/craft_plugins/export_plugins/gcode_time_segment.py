@@ -64,6 +64,7 @@ from fabmetheus_utilities import gcodec
 from fabmetheus_utilities import settings
 from fabmetheus_utilities.fabmetheus_tools import fabmetheus_interpret
 from skeinforge_application.skeinforge_utilities import skeinforge_polyfile
+from skeinforge_application.skeinforge_utilities import skeinforge_profile
 from struct import Struct
 import cStringIO
 import os
@@ -72,7 +73,7 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 # This is true if the output is text and false if it is binary."
@@ -105,7 +106,7 @@ def getOutput(gcodeText, repository=None):
 	return GcodeTimeSegmentSkein().getCraftedGcode(gcodeText, repository)
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return GcodeTimeSegmentRepository()
 
 def writeOutput( fileName, gcodeText = ''):
@@ -123,7 +124,7 @@ class GcodeTimeSegmentRepository:
 	"A class to handle the export settings."
 	def __init__(self):
 		"Set the default settings, execute title & settings fileName."
-		settings.addListsToRepository('skeinforge_application.skeinforge_plugins.craft_plugins.export_plugins.gcode_time.html', None, self )
+		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.export_plugins.gcode_time.html', self)
 		self.addSpaceBetweenWords = settings.BooleanSetting().getFromValue('Add Space Between Words', self, True )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( [ ('Gcode text files', '*.gcode') ], 'Open File to be Converted to Gcode Time', self, '')
 		self.initialTime = settings.FloatSpin().getFromValue(0.0, 'Initial Time (s)', self, 20.0, 10.0)
@@ -168,7 +169,7 @@ class GcodeTimeSegmentSkein:
 
 	def addLine(self, line):
 		"Add a line of text and a newline to the output."
-		self.output.write( line + '\n')
+		self.output.write(line + '\n')
 
 	def addStringToLine( self, lineStringIO, wordString ):
 		"Add a character and integer to line string."

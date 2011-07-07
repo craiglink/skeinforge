@@ -12,28 +12,39 @@ from fabmetheus_utilities.geometry.geometry_utilities import evaluate
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __credits__ = 'Art of Illusion <http://www.artofillusion.org/>'
-__date__ = "$Date: 2008/02/05 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
-
-def getLocalAttribute(xmlElement):
-	"Get the local attribute if any."
-	for key in xmlElement.attributeDictionary:
-		if key[: 1].isalpha():
-			value = evaluate.getEvaluatorSplitWords(xmlElement.attributeDictionary[key])
-			if key.startswith('local.'):
-				return evaluate.KeyValue( key[ len('local.') : ], value )
-			return evaluate.KeyValue( key, value )
-	return evaluate.KeyValue()
 
 def processXMLElement(xmlElement):
 	"Process the xml element."
 	functions = xmlElement.getXMLProcessor().functions
 	if len(functions) < 1:
+		print('Warning, there are no functions in processXMLElement in statement for:')
+		print(xmlElement)
 		return
 	function = functions[-1]
-	if xmlElement.object == None:
-		xmlElement.object = getLocalAttribute(xmlElement)
-	if xmlElement.object.keyTuple[1] != None:
-		localValue = evaluate.getEvaluatedExpressionValueBySplitLine( xmlElement.object.keyTuple[1], xmlElement )
-		function.localDictionary[ xmlElement.object.keyTuple[0] ] = localValue
+	evaluate.setLocalAttribute(xmlElement)
+	if xmlElement.xmlObject.value == None:
+		print('Warning, xmlElement.xmlObject.value is None in processXMLElement in statement for:')
+		print(xmlElement)
+		return
+	localValue = evaluate.getEvaluatedExpressionValueBySplitLine(xmlElement.xmlObject.value, xmlElement)
+	keywords = xmlElement.xmlObject.key.split('.')
+	if len(keywords) == 0:
+		print('Warning, there are no keywords in processXMLElement in statement for:')
+		print(xmlElement)
+		return
+	firstWord = keywords[0]
+	if len(keywords) == 1:
+		function.localDictionary[firstWord] = localValue
+		return
+	attributeName = keywords[-1]
+	object = None
+	if firstWord == 'self':
+		object = function.classObject
+	else:
+		object = function.localDictionary[firstWord]
+	for keywordIndex in xrange(1, len(keywords) - 1):
+		object = object._getAccessibleAttribute(keywords[keywordIndex])
+	object._setAccessibleAttribute(attributeName, localValue)

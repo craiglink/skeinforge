@@ -3,7 +3,7 @@ This page is in the table of contents.
 Oozebane is a script to turn off the extruder before the end of a thread and turn it on before the beginning.
 
 The oozebane manual page is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Oozebane
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Oozebane
 
 After oozebane turns the extruder on, it slows the feed rate down where the thread starts.  Then it speeds it up in steps so in theory the thread will remain at roughly the same thickness from the beginning.
 
@@ -54,29 +54,10 @@ When oozebane turns the extruder off, it slows the feed rate down in steps so in
 ==Examples==
 The following examples oozebane the file Screw Holder Bottom.stl.  The examples are run in a terminal in the folder which contains Screw Holder Bottom.stl and oozebane.py.
 
-
 > python oozebane.py
 This brings up the oozebane dialog.
 
-
 > python oozebane.py Screw Holder Bottom.stl
-The oozebane tool is parsing the file:
-Screw Holder Bottom.stl
-..
-The oozebane tool has created the file:
-.. Screw Holder Bottom_oozebane.gcode
-
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import oozebane
->>> oozebane.main()
-This brings up the oozebane dialog.
-
-
->>> oozebane.writeOutput('Screw Holder Bottom.stl')
 The oozebane tool is parsing the file:
 Screw Holder Bottom.stl
 ..
@@ -103,12 +84,12 @@ import sys
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
 __date__ = '$Date: 2008/21/04 $'
-__license__ = 'GPL 3.0'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
 def getCraftedText( fileName, text, oozebaneRepository = None ):
 	"Oozebane a gcode linear move file or text."
-	return getCraftedTextFromText( archive.getTextIfEmpty( fileName, text ), oozebaneRepository )
+	return getCraftedTextFromText( archive.getTextIfEmpty(fileName, text), oozebaneRepository )
 
 def getCraftedTextFromText( gcodeText, oozebaneRepository = None ):
 	"Oozebane a gcode linear move text."
@@ -121,14 +102,12 @@ def getCraftedTextFromText( gcodeText, oozebaneRepository = None ):
 	return OozebaneSkein().getCraftedGcode( gcodeText, oozebaneRepository )
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return OozebaneRepository()
 
-def writeOutput(fileName=''):
+def writeOutput(fileName, shouldAnalyze=True):
 	"Oozebane a gcode linear move file."
-	fileName = fabmetheus_interpret.getFirstTranslatorFileNameUnmodified(fileName)
-	if fileName != '':
-		skeinforge_craft.writeChainTextWithNounMessage( fileName, 'oozebane')
+	skeinforge_craft.writeChainTextWithNounMessage(fileName, 'oozebane', shouldAnalyze)
 
 
 class OozebaneRepository:
@@ -137,7 +116,7 @@ class OozebaneRepository:
 		"Set the default settings, execute title & settings fileName."
 		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge_plugins.craft_plugins.oozebane.html', self )
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Oozebane', self, '')
-		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge_Oozebane')
+		self.openWikiManualHelpPage = settings.HelpPage().getOpenFromAbsolute('http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge_Oozebane')
 		self.activateOozebane = settings.BooleanSetting().getFromValue('Activate Oozebane', self, False )
 		self.afterStartupDistance = settings.FloatSpin().getFromValue( 0.7, 'After Startup Distance (millimeters):', self, 1.7, 1.2 )
 		self.earlyShutdownDistance = settings.FloatSpin().getFromValue( 0.7, 'Early Shutdown Distance (millimeters):', self, 1.7, 1.2 )
@@ -395,7 +374,7 @@ class OozebaneSkein:
 
 	def getLinearMoveWithFeedRate( self, feedRate, location ):
 		"Get a linear move line with the feed rate."
-		return self.distanceFeedRate.getLinearGcodeMovementWithFeedRate( feedRate, location.dropAxis(2), location.z )
+		return self.distanceFeedRate.getLinearGcodeMovementWithFeedRate( feedRate, location.dropAxis(), location.z )
 
 	def getLinearMoveWithFeedRateSplitLine( self, feedRate, splitLine ):
 		"Get a linear move line with the feed rate and split line."
@@ -454,7 +433,7 @@ class OozebaneSkein:
 			firstWord = gcodec.getFirstWord(splitLine)
 			self.distanceFeedRate.parseSplitLine(firstWord, splitLine)
 			if firstWord == '(</extruderInitialization>)':
-				self.distanceFeedRate.addLine('(<procedureDone> oozebane </procedureDone>)')
+				self.distanceFeedRate.addLine('(<procedureName> oozebane </procedureName>)')
 				return
 			elif firstWord == '(<operatingFeedRatePerSecond>':
 				self.operatingFeedRateMinute = 60.0 * float(splitLine[1])

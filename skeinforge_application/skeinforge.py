@@ -21,13 +21,28 @@ The interpret tool accesses and displays the import plugins.
 
 The default settings are similar to those on Nophead's machine.  A setting which is often different is the 'Layer Thickness' in carve.
 
-===Alternative===
-Another way to make gcode for a model is to use the Java RepRap host program, described at:
-http://reprap.org/wiki/Installing_RepRap_on_your_computer
+===Command Line Interface===
+To bring up the skeinforge dialog without a file name, type:
+python skeinforge_application/skeinforge.py
+
+Slicing a file from skeinforge_utilities/skeinforge_craft.py, for example:
+python skeinforge_application/skeinforge_utilities/skeinforge_craft.py test.stl
+
+will slice the file and exit. This is the correct option for programs which use skeinforge to only generate a gcode file.
+
+Slicing a file from skeinforge.py, for example:
+python skeinforge_application/skeinforge.py test.stl
+
+will slice the file and bring up the skeinforge window and the analyze windows and then skeinforge will wait for user input.
+
+Slicing a file from skeinforge_plugins/craft.py, for example:
+python skeinforge_application/skeinforge_plugins/craft.py test.stl
+
+will slice the file and bring up the analyze windows only and then skeinforge will wait for user input.
 
 ===Contribute===
 You can contribute by helping develop the manual at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge
 
 There is also a forum thread about how to contribute to skeinforge development at:
 http://dev.forums.reprap.org/read.php?12,27562
@@ -36,12 +51,15 @@ I will only reply to emails from contributors or to complete bug reports.
 
 ===Documentation===
 There is a manual at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge
 
 There is also documentation is in the documentation folder, in the doc strings for each module and it can be called from the '?' button or the menu or by clicking F1 in each setting dialog.
 
 A list of other tutorials is at:
-http://www.bitsfrombytes.com/wiki/index.php?title=Skeinforge#Tutorials
+http://fabmetheus.crsndoo.com/wiki/index.php/Skeinforge#Tutorials
+
+Skeinforge tagged pages on thingiverse can be searched for at:
+http://www.thingiverse.com/search?cx=015525747728168968820%3Arqnsgx1xxcw&cof=FORID%3A9&ie=UTF-8&q=skeinforge&sa=Search&siteurl=www.thingiverse.com%2F#944
 
 ===Fabrication===
 To fabricate a model with gcode and the Arduino you can use the send.py in the fabricate folder.  The documentation for it is in the folder as send.html and at:
@@ -142,17 +160,23 @@ When the skeinforge dialog pops up, click 'Skeinforge', choose the file which yo
 Or you can turn files into gcode by adding the file name, for example:
 > python skeinforge.py Screw Holder Bottom.stl
 
+===License===
+GNU Affero General Public License
+http://www.gnu.org/licenses/agpl.html
+
 ===Motto===
 I may be slow, but I get there in the end.
 
 ===Troubleshooting===
-If there's a bug, try downloading the very latest version because skeinforge is often updated without an announcement.
+If there's a bug, try downloading the very latest version because skeinforge is often updated without an announcement.  The very latest version is at:
+http://members.axion.net/~enrique/reprap_python_beanshell.zip
 
 If there is still a bug, then first prepare the following files:
 
 1. stl file
 2. pictures explaining the problem
 3. your settings (pack the whole .skeinforge directory with all your settings) 
+4. alterations folder, if you have any active alterations files
 
 Then zip all the files.
 
@@ -162,10 +186,15 @@ If the dialog window is too big for the screen, on most Linux window managers yo
 
 If you can't use the graphical interface, you can change the settings for skeinforge by using a text editor or spreadsheet to change the settings in the profiles folder in the .skeinforge folder in your home directory.
 
-Comments and suggestions are welcome, however, I won't reply unless you are a contributor because developing takes all my time and as of the time of this writing I have at least three years of features to implement.
-
-I will only answer your questions if you contribute to skeinforge in some way.  Some ways of contributing to skeinforge are in the contributions thread at:
+Comments and suggestions are welcome, however, I won't reply unless you are a contributor.  Likewise, I will only answer your questions if you contribute to skeinforge in some way.  Some ways of contributing to skeinforge are in the contributions thread at:
 http://dev.forums.reprap.org/read.php?12,27562
+
+You could also contribute articles to demozendium on any topic:
+http://fabmetheus.crsndoo.com/wiki/index.php/Main_Page
+
+If you contribute in a significant way to another open source project, I will consider that also.
+
+When I answered everyone's questions, eventually I received more questions than I had time to answer, so now I only answer questions from contributors.
 
 I reserve the right to make any correspondence public.  Do not send me any correspondence marked confidential.  If you do I will delete it.
 
@@ -177,25 +206,10 @@ The following examples forge the STL file Screw Holder.stl.  The examples are ru
 This brings up the dialog, after clicking 'Skeinforge', the following is printed:
 The exported file is saved as Screw Holder_export.gcode
 
-
 > python skeinforge.py Screw Holder.stl
 The exported file is saved as Screw Holder_export.gcode
 
-
-> python
-Python 2.5.1 (r251:54863, Sep 22 2007, 01:43:31)
-[GCC 4.2.1 (SUSE Linux)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> import skeinforge
->>> skeinforge.writeOutput('Screw Holder.stl')
-The exported file is saved as Screw Holder_export.gcode
-
-
->>> skeinforge.main()
-This brings up the skeinforge dialog.
-
-
-To run only fill for example, type in the skeinforge_plugins folder which fill is in:
+To run only fill for example, type in the craft_plugins folder which fill is in:
 > python fill.py
 
 """
@@ -208,6 +222,7 @@ from fabmetheus_utilities import archive
 from fabmetheus_utilities import euclidean
 from fabmetheus_utilities import gcodec
 from fabmetheus_utilities import settings
+from optparse import OptionParser
 from skeinforge_application.skeinforge_utilities import skeinforge_craft
 from skeinforge_application.skeinforge_utilities import skeinforge_polyfile
 from skeinforge_application.skeinforge_utilities import skeinforge_profile
@@ -215,67 +230,74 @@ import os
 import sys
 
 
-# scale xy z
-# iso svg
-# set derivations to lathe form
-# gear separated diagonally, center distance
-# linear bearing
-# mirror axis center & origin, concatenate
-# matrixTetragrid to tetragrid, matrix.transform, target
-# maybe matrix array form a00 a01.. also
-# matrix rotate around axis http://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Transformations
-# lathe, transform normal in getRemaining, getConnection
-# grate separate
-# xml_creation
-# class, pymethe
-# fill rename shortenedSegmentList gridSegmentList and delete comments
-# array paths, follow paths, later maybe targetequation radius xyz give index
-# writeTagged, tags, creationTags, writeMatrix='true'
-# connectionfrom, to, connect, xaxis
-# add overview link to crnsdoo index and svg page
-# bound.bottom to cube, sphere, cylinder input, maybe mesh., bound.bottom & left & right & top for xy plane
-# look over copy module, make copy solid like copy lineation
-# document gear script
-# stretch add back addAlong
+# announce
 #
+# circle is average radius in drill
+# change topOverBottom in linearbearingexample to pegAngle
+# add links download manual svg_writer
+# change thickness to height in gear xml
+# base xmlelement off xmlatom
 # maybe in svgReader if loop intersection with previous union else add
 #
 # unimportant
 # minor outline problem when an end path goes through a path, like in the letter A
 # view profile 1 mm thickness
-# svg inskcape layer label, import into inskscape in general
-# only parse svg once, do not parse again if yAxisPointingUpward="true"
 #
 # close, getPillarByLoopLists, addConcave, polymorph original graph section, loop, add step object, add continuous object
+# hollow top
+# packingDensity or density in grid - probably just density
+# derivations for shapes
+# think about rectangular getVector3RemoveByPre..
+# links in layerTemplate
 # del previous, add begin & end if far  get actual path
+# linearbearingexample 15 x 1 x 2, linearbearingcage
+# clairvoyance
+# add date time 11.01.02|12:08
 # polling
-# getNormal, getIsFlat?
-# write svg for visible paths???
-# combine xmlelement with csvelement using example.csv & geometry.csv, csv _format, _column, _row, _text
+# connectionfrom, to, connect, xaxis
+# lathe, transform normal in getRemaining, getConnection
 # getConnection of some kind like getConnectionVertexes, getConnection
-# import module, overwriteRoot
+# xml_creation
+# voronoi average location intersection looped inset intercircles
+# 'fileName, text, repository' commandLineInterface
+#
+#
+# multiply to table + boundary bedBound bedWidth bedHeight bedFile.csv
+# getNormal, getIsFlat?
+# info statistics, procedures, xml if any
+# test solid arguments
+# combine xmlelement with csvelement using example.csv & geometry.csv, csv _format, _column, _row, _text
 # pixel, voxel, surfaxel/boxel, lattice, mesh
 # probably not replace getOverlapRatio with getOverlap if getOverlapRatio is never small, always 0.0
-# probably not speed up CircleIntersection by performing isWithinCircles before creation
-# equation for vertexes if not already
 # mesh. for cube, then cyliner, then sphere after lathe
-# probably not move alterations and profiles
+# dimension extrude diameter, density
+# thermistor lookup table
+# add overview link to crnsdoo index and svg page
+# stretch add back addAlong
+# import, write, copy examples
+# maybe remove default warnings from scale, rotate, translate, transform
+# easy helix
+# write tool; maybe write one deep
+#
+#
 # tube
 # rotor
+# coin
+# demozendium privacy policy, maybe thumbnail logo
+# pymethe
 # test translate
-# lathe
-# think about setActualMinimumZ in boolean_geometry
+# full lathe
 # pyramid
 # round extrusion ?, fillet
+# make html statistics, move statistics to folder
 # manipulate solid, maybe manipulate around elements
-# hollow top
 # boolean loop corner outset
+# mechaslab advanced drainage, shingles
 # dovetail
-# creationID, addObject, getTarget, copyXMLElement?
 # maybe not getNewObject, getNew, addToBoolean
 # work out close and radius
 # maybe try to get rid of comment if possible
-# voronoi average location intersection looped inset intercircles
+# maybe have add function as well as append for list and string
 # maybe move and give geometryOutput to cube, cylinder, sphere
 #
 # comb -> maybe add back running jump look at outside loops only for jump, find closest points, find slightly away inside points, link
@@ -283,14 +305,15 @@ import sys
 # comb documentation
 #
 # maybe move widen before bottom
+# maybe add 1 to max layer input to iso in layer_template.svg
 # maybe save all generated_files option
-# maybe meta overhang
-# convert global repository settings to local settings
 # table to dictionary
 # check for last existing then remove unneeded fill code (getLastExistingFillLoops) from euclidean
 # remove cool set at end of layer
 # add fan on when hot in chamber
 # maybe measuring rod
+# getLayerThickness from xml
+# maybe center for xy plane
 # remove comments from clip, bend
 # winding into coiling, coil into wind & weave
 # later, precision
@@ -298,7 +321,14 @@ import sys
 # http://wiki.makerbot.com/configuring-skeinforge
 #
 #
+# remove index from CircleIntersection remove ahead or behind from CircleIntersection _speed
+# cache surroundingCarves _speed
+# probably not speed up CircleIntersection by performing isWithinCircles before creation _speed
+# pixelSet instead of pixelTable for arounds _speed
+#
+#
 # add hook _extrusion
+# smooth http://hydraraptor.blogspot.com/2010/12/frequency-limit.html _extrusion
 # implement acceleration & collinear removal in penultimate viewers _extrusion
 # integral thin width _extrusion
 # layer color, for multilayer start http://reprap.org/pub/Main/MultipleMaterialsFiles/legend.xml _extrusion
@@ -306,7 +336,10 @@ import sys
 # raft triple layer base, middle interface with hot loop or ties
 # somehow, add pattern to outside, http://blog.makerbot.com/2010/09/03/lampshades/
 #
+# rename skeinforge_profile.addListsToCraftTypeRepository to skeinforge_profile.addToCraftTypeRepository after apron
+# basic tool
 # arch, ceiling
+# meta setting, rename setting _setting
 # add polish, has perimeter, has cut first layer (False)
 # probably not set addedLocation in distanceFeedRate after arc move
 # maybe horizontal bridging and/or check to see if the ends are standing on anything
@@ -315,25 +348,25 @@ import sys
 # save all analyze viewers of the same name except itself, update help menu self.wikiManualPrimary.setUpdateFunction
 # check alterations folder first, if there is something copy it to the home directory, if not check the home directory
 # set temperature in temperature
-# move alterations and profiles to top level
+# add links to demozendium in help
+# maybe add hop only if long option
 #
 #
 #
 # help primary menu item refresh
 # add plugin help menu, add craft below menu
 # give option of saving when switching profiles
-# xml & svg more forgiving, svg make defaults for layerThickness, maxZ, minZ, add layer z to svg_template, make the slider on the template track even when mouse is outside
+# xml & svg more forgiving, svg make defaults for layerThickness
 # option of surrounding lines in display
 # maybe add connecting line in display line
 # maybe check inset loops to see if they are smaller, but this would be slow
 # maybe status bar
 # maybe measurement ruler mouse tool
 # search rss from blogs, add search links for common materials, combine created on or progress bar with searchable help
-# boundaries, center radius z bottom top, circular or rectangular, polygon, put cool minimum radius orbits within boundaries
+# boundaries, center radius z bottom top, alterations file, circular or rectangular, polygon, put cool minimum radius orbits within boundaries, <bounds> bound.. </bounds>
 # move & rotate model
 # possible jitter bug http://cpwebste.blogspot.com/2010/04/hydras-first-print.html
 # trial, meta in a grid settings
-# maybe svg slice format
 # maybe interpret svg_convex_mesh
 #laminate tool head
 #maybe use 5x5 radius search in circle node
@@ -356,18 +389,17 @@ import sys
 # svg triangle mesh, svg polygon mesh
 # simulate
 #transform
-#extrude loops I guess make circles? and/or run along sparse infill
+# juricator
+# probably not run along sparse infill to avoid stops
 #custom inclined plane, inclined plane from model, screw, fillet travel as well maybe
 # probably not stretch single isLoop
 #maybe much afterwards make congajure multistep view
 #maybe stripe although model colors alone can handle it
 #stretch fiber around shape, maybe modify winding for asymmetric shapes
 #multiple heads around edge
-#maybe add full underscored date name for version
 #maybe add rarely used tool option
 #angle shape for overhang extrusions
 #maybe m111? countdown
-#common tool
 #first time tool tip
 #individual tool tip to place in text
 # maybe try to simplify raft layer start
@@ -393,7 +425,8 @@ import sys
 #8 22270, 2625
 #9 24895, 2967, 98
 #10 27862, 3433, 110
-#11 31295
+#11 31295, 3327
+#12 34622 
 #85 jan7, 86jan11, 87 jan13, 88 jan15, 91 jan21, 92 jan23, 95 jan30, 98 feb6
 #make one piece electromagnet spool
 #stepper rotor with ceramic disk magnet in middle, electromagnet with long thin spool line?
@@ -422,7 +455,7 @@ import sys
 # third, a routine to detect the largest face and orient the part accordingly. Mat http://reprap.kumy.net/
 # concept, three perpendicular slices to get display spheres
 # extend lines around short segment after cross hatched boolean
-# concept, teslocracy or citizendium; donation, postponement, rotate ad network, cached search options
+# concept, donation, postponement, rotate ad network, cached search options
 # concept, local ad server, every time the program runs it changes the iamge which all the documentation points to from a pool of ads
 # concept, join cross slices, go from vertex to two orthogonal edges, then from edges to each other, if not to a common point, then simplify polygons by removing points which do not change the area much
 # concept, each node is fourfold, use sorted intersectionindexes to find close, connect each double sided edge, don't overlap more than two triangles on an edge
@@ -438,10 +471,8 @@ import sys
 # concept, indexium expand condense remove, single text, pymetheus
 # concept, inscribed key silencer
 # concept, spreadsheet to python and/or javascript
-# concept, blog, frequent updates, mix associated news
 # concept, range voting for posters, informative, complainer, funny, insightful, rude, spammer, literacy,  troll?
 # concept, intermittent cloud with multiple hash functions
-# concept, demodiu xml articles
 
 
 __author__ = 'Enrique Perez (perez_enrique@yahoo.com)'
@@ -464,93 +495,115 @@ Zach Hoeken <http://blog.zachhoeken.com/>
 
 Organizations:
 Art of Illusion <http://www.artofillusion.org/>"""
-__date__ = "$Date: 2008/21/11 $"
-__license__ = 'GPL 3.0'
+__date__ = '$Date: 2008/02/05 $'
+__license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
 
 
-def addToProfileMenu( profileSelection, profileType, repository ):
-	"Add a profile menu."
+def addToProfileMenu(profileSelection, profileType, repository):
+	'Add a profile menu.'
 	pluginFileNames = skeinforge_profile.getPluginFileNames()
 	craftTypeName = skeinforge_profile.getCraftTypeName()
 	pluginModule = skeinforge_profile.getCraftTypePluginModule()
-	profilePluginSettings = settings.getReadRepository( pluginModule.getNewRepository() )
+	profilePluginSettings = settings.getReadRepository(pluginModule.getNewRepository())
 	for pluginFileName in pluginFileNames:
-		skeinforge_profile.ProfileTypeMenuRadio().getFromMenuButtonDisplay( profileType, pluginFileName, repository, craftTypeName == pluginFileName )
+		skeinforge_profile.ProfileTypeMenuRadio().getFromMenuButtonDisplay(profileType, pluginFileName, repository, craftTypeName == pluginFileName)
 	for profileName in profilePluginSettings.profileList.value:
-		skeinforge_profile.ProfileSelectionMenuRadio().getFromMenuButtonDisplay( profileSelection, profileName, repository, profileName == profilePluginSettings.profileListbox.value )
+		skeinforge_profile.ProfileSelectionMenuRadio().getFromMenuButtonDisplay(profileSelection, profileName, repository, profileName == profilePluginSettings.profileListbox.value)
 
 def getPluginsDirectoryPath():
-	"Get the plugins directory path."
-	return archive.getAbsoluteFrozenFolderPath( __file__, 'skeinforge_plugins')
+	'Get the plugins directory path.'
+	return archive.getAbsoluteFrozenFolderPath(__file__, 'skeinforge_plugins')
 
 def getPluginFileNames():
-	"Get analyze plugin fileNames."
-	return archive.getPluginFileNamesFromDirectoryPath( getPluginsDirectoryPath() )
+	'Get analyze plugin fileNames.'
+	return archive.getPluginFileNamesFromDirectoryPath(getPluginsDirectoryPath())
 
 def getNewRepository():
-	"Get the repository constructor."
+	'Get new repository.'
 	return SkeinforgeRepository()
 
-def getRadioPluginsAddPluginGroupFrame( directoryPath, importantFileNames, names, repository ):
-	"Get the radio plugins and add the plugin frame."
+def getRadioPluginsAddPluginGroupFrame(directoryPath, importantFileNames, names, repository):
+	'Get the radio plugins and add the plugin frame.'
 	repository.pluginGroupFrame = settings.PluginGroupFrame()
 	radioPlugins = []
 	for name in names:
-		radioPlugin = settings.RadioPlugin().getFromRadio( name in importantFileNames, repository.pluginGroupFrame.latentStringVar, name, repository, name == importantFileNames[0] )
+		radioPlugin = settings.RadioPlugin().getFromRadio(name in importantFileNames, repository.pluginGroupFrame.latentStringVar, name, repository, name == importantFileNames[0])
 		radioPlugin.updateFunction = repository.pluginGroupFrame.update
 		radioPlugins.append( radioPlugin )
-	defaultRadioButton = settings.getSelectedRadioPlugin( importantFileNames + [ radioPlugins[0].name ], radioPlugins )
-	repository.pluginGroupFrame.getFromPath( defaultRadioButton, directoryPath, repository )
+	defaultRadioButton = settings.getSelectedRadioPlugin(importantFileNames + [radioPlugins[0].name], radioPlugins)
+	repository.pluginGroupFrame.getFromPath(defaultRadioButton, directoryPath, repository)
 	return radioPlugins
 
 def writeOutput(fileName):
-	"Craft a gcode file."
-	skeinforge_craft.writeOutput(fileName)
+	'Craft a file, display dialog.'
+	repository = getNewRepository()
+	repository.fileNameInput.value = fileName
+	repository.execute()
+	settings.startMainLoopFromConstructor(repository)
 
 
 class SkeinforgeRepository:
-	"A class to handle the skeinforge settings."
+	'A class to handle the skeinforge settings.'
 	def __init__(self):
-		"Set the default settings, execute title & settings fileName."
-		settings.addListsToRepository('skeinforge_application.skeinforge.html', None, self )
+		'Set the default settings, execute title & settings fileName.'
+		skeinforge_profile.addListsToCraftTypeRepository('skeinforge_application.skeinforge.html', self)
 		self.fileNameInput = settings.FileNameInput().getFromFileName( fabmetheus_interpret.getGNUTranslatorGcodeFileTypeTuples(), 'Open File for Skeinforge', self, '')
 		self.profileType = settings.MenuButtonDisplay().getFromName('Profile Type: ', self )
-		self.profileSelection = settings.MenuButtonDisplay().getFromName('Profile Selection: ', self )
+		self.profileSelection = settings.MenuButtonDisplay().getFromName('Profile Selection: ', self)
 		addToProfileMenu( self.profileSelection, self.profileType, self )
 		settings.LabelDisplay().getFromName('Search:', self )
-		reprapSearch = settings.HelpPage().getFromNameAfterHTTP('members.axion.net/~enrique/search_reprap.html', 'Reprap', self )
+		reprapSearch = settings.HelpPage().getFromNameAfterHTTP('members.axion.net/~enrique/search_reprap.html', 'Reprap', self)
 		skeinforgeSearch = settings.HelpPage().getFromNameAfterHTTP('members.axion.net/~enrique/search_skeinforge.html', 'Skeinforge', self )
 		skeinforgeSearch.column += 2
-		webSearch = settings.HelpPage().getFromNameAfterHTTP('members.axion.net/~enrique/search_web.html', 'Web', self )
+		webSearch = settings.HelpPage().getFromNameAfterHTTP('members.axion.net/~enrique/search_web.html', 'Web', self)
 		webSearch.column += 4
 		versionText = archive.getFileText( archive.getVersionFileName() )
-		self.version = settings.LabelDisplay().getFromName('Version: ' + versionText, self )
-		settings.LabelDisplay().getFromName('', self )
+		self.version = settings.LabelDisplay().getFromName('Version: ' + versionText, self)
+		settings.LabelDisplay().getFromName('', self)
 		importantFileNames = ['craft', 'profile']
-		getRadioPluginsAddPluginGroupFrame( getPluginsDirectoryPath(), importantFileNames, getPluginFileNames(), self )
+		getRadioPluginsAddPluginGroupFrame(getPluginsDirectoryPath(), importantFileNames, getPluginFileNames(), self)
 		self.executeTitle = 'Skeinforge'
 
 	def execute(self):
-		"Skeinforge button has been clicked."
+		'Skeinforge button has been clicked.'
 		fileNames = skeinforge_polyfile.getFileOrDirectoryTypesUnmodifiedGcode(self.fileNameInput.value, fabmetheus_interpret.getImportPluginFileNames(), self.fileNameInput.wasCancelled)
 		for fileName in fileNames:
-			writeOutput(fileName)
+			skeinforge_craft.writeOutput(fileName)
 
 	def save(self):
-		"Profile has been saved and profile menu should be updated."
+		'Profile has been saved and profile menu should be updated.'
 		self.profileType.removeMenus()
 		self.profileSelection.removeMenus()
-		addToProfileMenu( self.profileSelection, self.profileType, self )
-		self.profileType.addRadiosToDialog( self.repositoryDialog )
-		self.profileSelection.addRadiosToDialog( self.repositoryDialog )
+		addToProfileMenu(self.profileSelection, self.profileType, self)
+		self.profileType.addRadiosToDialog(self.repositoryDialog)
+		self.profileSelection.addRadiosToDialog(self.repositoryDialog)
 
 
 def main():
-	"Display the skeinforge dialog."
-	if len(sys.argv) > 1:
-		writeOutput(' '.join(sys.argv[1 :]))
+	'Display the skeinforge dialog.'
+	parser = OptionParser()
+	parser.add_option(
+		'-p', '--prefdir', help='set path to preference directory', action='store', type='string', dest='preferencesDirectory')
+	parser.add_option(
+		'-s', '--start', help='set start file to use', action='store', type='string', dest='startFile')
+	parser.add_option(
+		'-e', '--end', help='set end file to use',	action='store', type='string', dest='endFile')
+	parser.add_option(
+		'-o', '--option', help='set an individual option in the format "module:preference=value"',
+		action='append', type='string', dest='preferences')
+	(options, args) = parser.parse_args()
+	if options.preferencesDirectory:
+		archive.globalTemporarySettingsPath = options.preferencesDirectory
+	if options.preferences:
+		for prefSpec in options.preferences:
+			(moduleName, prefSpec) = prefSpec.split(':', 1)
+			(prefName, valueName) = prefSpec.split('=', 1)
+			settings.addPreferenceOverride(moduleName, prefName, valueName)
+	sys.argv = [sys.argv[0]] + args
+	if len( args ) > 0:
+		writeOutput( ' '.join(args) )
 	else:
-		settings.startMainLoopFromConstructor( getNewRepository() )
+		settings.startMainLoopFromConstructor(getNewRepository())
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 	main()
